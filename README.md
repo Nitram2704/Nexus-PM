@@ -1,88 +1,93 @@
-# Nexus-PM: Tablero Ágil con Agente Autónomo Integrado
+<div align="center">
 
-> Un sistema Kanban de gestión de proyectos donde un Agente de IA actúa como Scrum Master: genera backlogs automáticamente desde requerimientos vagos, detecta cuellos de botella en el flujo de trabajo y actualiza el estado de los tickets interpretando lenguaje natural a través de un chat.
+```text
+  _   _                       ____  __  __ 
+ | \ | | _____  ___   _ ___  |  _ \|  \/  |
+ |  \| |/ _ \ \/ / | | / __| | |_) | |\/| |
+ | |\  |  __/>  <| |_| \__ \_|  __/| |  | |
+ |_| \_|\___/_/\_\\__,_|___(_)_|   |_|  |_|
+  v0.1.0 — Agile Platform with AI Scrum Master
+```
 
-## 🚀 Visión
+**An intelligent Kanban system that generates backlogs, detects bottlenecks, and orchestrates sprints via Natural Language.**
 
-Aplicación web de gestión de proyectos de software — similar a Jira — que permite a los equipos crear y administrar proyectos, sprints, backlogs y tareas desde una sola plataforma. A diferencia de las herramientas tradicionales, integra un **agente de inteligencia artificial** que automatiza la generación de historias de usuario, la estructuración del backlog y la producción de notas y recomendaciones.
+[Features](#-features) • [Quickstart](#-quickstart) • [Architecture](#-architecture) • [AI Agent](#-ai-scrum-master)
 
-## 🔧 Stack Tecnológico
+</div>
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18 + Vite + TypeScript + Tailwind CSS |
-| **State** | Zustand (global) + TanStack Query (server) |
-| **Backend** | Django 5 + Django REST Framework |
-| **Database** | PostgreSQL |
-| **Auth** | JWT (SimpleJWT) |
-| **AI** | Anthropic Claude API |
-| **Async** | Celery + Redis |
-| **DnD** | React Beautiful DnD |
-| **Charts** | Recharts |
+---
 
-## 📋 Funcionalidades Principales
+## ⚡ What is Nexus-PM?
 
-### 🔐 Autenticación
-- Registro, login, recuperación de contraseña (JWT)
-- Gestión de roles: Owner, Admin, Developer, Viewer
+`Nexus-PM` is a complete project management web application built to mirror tools like Jira, but engineered from the ground up for the AI era. 
 
-### 📁 Gestión de Proyectos
-- CRUD de proyectos con clave auto-generada
-- Invitación de miembros por email
-- Dashboard con cards de proyectos
+Instead of writing tickets manually, a built-in AI Scrum Master converts vague requirements into structured user stories, prioritizes your backlog, and provides insights during sprints.
 
-### 📝 Backlog & Sprints
-- Crear ítems manualmente o **generarlos con IA**
-- Drag & drop para priorizar
-- Sprint planning con assignment visual
-- Story points (Fibonacci)
+**One platform. Complete Agile lifecycle. Fully AI-assisted.**
 
-### 📊 Tablero Kanban
-- Drag & drop entre columnas
-- WIP limits con indicadores visuales
-- Panel lateral de detalle de tarea
-- Columnas personalizables
+## ✨ Features
 
-### 🤖 Agente IA (Scrum Master)
-- **Genera historias de usuario** desde lenguaje natural
-- **Genera backlog completo** desde descripción de proyecto
-- **Chat contextual** — el agente conoce tu sprint, tareas y equipo
-- **Sugiere priorización** del backlog con justificación
-- **Resumen de sprint** automático
+- 🤖 **AI Scrum Master:** Auto-generates backlogs from simple prompts and suggests sprint priorities.
+- 📋 **Intelligent Kanban:** Fully interactive Board with Drag & Drop, WIP limits, and visual bottlenecks.
+- 🧠 **Contextual Chat:** Talk to an AI that knows your active sprint, team velocity, and task statuses.
+- 📊 **Real-time Reports:** Velocity charts, daily burndowns, and automated sprint retrospectives.
+- 🎨 **Premium UI/UX:** Built with a beautiful dark-mode "Command Center" aesthetic using React & Tailwind.
 
-### 🔔 Notificaciones
-- Alertas in-app para asignaciones y deadlines
-- Preferencias configurables por tipo
+---
 
-### 📈 Reportes
-- Velocity chart (story points por sprint)
-- Burndown chart (progreso diario)
-- KPIs del proyecto
-- Exportar backlog a CSV
+## 🚀 Quickstart (Development)
 
-## 🏗 Estado del Proyecto
+### 1. Requirements
+- Node.js 18+
+- Python 3.10+
+- PostgreSQL & Redis
+- Anthropic API Key (for Claude 3)
 
-**Fase actual:** Planificación completa — listo para implementación
+### 2. Setup Backend (Django)
+```bash
+git clone https://github.com/Nitram2704/Nexus-PM.git
+cd Nexus-PM/backend
+python -m venv venv
+# Linux/Mac: source venv/bin/activate
+# Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py seed_demo
+python manage.py runserver
+```
 
-| Fase | Status |
-|------|--------|
-| 1. Foundation & Auth (4 planes) | 🔲 Next |
-| 2. Project Management (3 planes) | ⏳ |
-| 3. Backlog & Sprints (4 planes) | ⏳ |
-| 4. Kanban Board (3 planes) | ⏳ |
-| 5. AI Agent (4 planes) | ⏳ |
-| 6. Notifications (2 planes) | ⏳ |
-| 7. Reports & Polish (3 planes) | ⏳ |
+### 3. Setup Frontend (React)
+```bash
+cd ../frontend
+npm install
+npm run dev
+```
 
-Ver `.planning/` para documentación completa del proyecto.
+### 4. Setup AI Workers (Celery)
+```bash
+# In a new terminal, from the backend directory:
+celery -A nexuspm worker -l info -P eventlet
+```
 
-## 🎨 Design Identity
+🎉 **Done!** Open `http://localhost:5173` to access the Command Center.
 
-- **Concepto:** "Agile Command Center" — dark mode premium
-- **Colores:** Electric Blue (#3B82F6) + Warm Amber (#F59E0B) para IA
-- **Tipografía:** Inter (UI) + JetBrains Mono (datos)
-- **Estilo:** Glassmorphism, micro-animations, responsive
+---
 
-## 📄 Licencia
+## 🏗️ Architecture Under the Hood
 
-Proyecto académico — Universidad / Ingeniería en Desarrollo de Software
+```mermaid
+graph LR
+    A[React GUI] -->|REST API| B(Django DRF)
+    B -->|State| C[(PostgreSQL)]
+    B -->|Task delegation| D(Celery Worker)
+    D -->|Cache/Broker| E[(Redis)]
+    D <-->|LLM Queries| F[Anthropic API]
+```
+
+Nexus-PM ensures that the UI remains fast and responsive by offloading heavy AI generation tasks (like parsing a whole backlog) to asynchronous Celery workers. The frontend polls for job completion and smoothly animates the new cards into view.
+
+---
+
+<div align="center">
+  <i>Built for Modern Agile Teams. Powered by AI.</i>
+</div>
