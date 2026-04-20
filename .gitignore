@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+.env.local
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Media uploads
+media/
+
+# Coverage
+htmlcov/
+.coverage
