@@ -1,0 +1,7 @@
+Django==5.1.4
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+django-cors-headers==4.4.0
+python-decouple==3.8
+# Pillow will be added once Python 3.14 binaries are available
+# pip install Pillow when using Python <= 3.13
