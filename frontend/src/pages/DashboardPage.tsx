@@ -43,7 +43,12 @@ export function DashboardPage() {
           <p className="dash-welcome-sub">
             Tu sesión está activa. El dashboard de proyectos llegará en la Phase 2.
           </p>
-          <div className="dash-badge">HU-02 ✓ Login exitoso</div>
+          <div className="flex gap-4 mt-4">
+            <Link to="/project/1/kanban" className="btn-primary no-underline px-6">
+              Ver Proyecto NEX (Demo)
+            </Link>
+          </div>
+          <div className="dash-badge mt-6">HU-18 Ready for Testing</div>
         </div>
       </main>
 

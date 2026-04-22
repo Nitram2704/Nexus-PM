@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     "corsheaders",
     # Local
     "apps.accounts",
+    "apps.projects",
 ]
 
 MIDDLEWARE = [
