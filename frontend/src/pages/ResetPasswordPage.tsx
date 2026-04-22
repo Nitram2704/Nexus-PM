@@ -179,58 +179,6 @@ export function ResetPasswordPage() {
           )}
         </div>
       </div>
-
-      <style>{`
-        /* Reuse styles from LoginPage via global or local scope */
-        .auth-layout { display: flex; min-height: 100vh; background: var(--color-bg); }
-        .auth-brand { position: relative; flex: 0 0 55%; display: flex; align-items: center; justify-content: center; background: var(--color-surface); border-right: 1px solid var(--color-border); overflow: hidden; }
-        .auth-brand-inner { position: relative; z-index: 1; max-width: 480px; padding: 48px; display: flex; flex-direction: column; gap: 40px; }
-        .brand-logo { display: flex; align-items: center; gap: 12px; }
-        .brand-name { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--color-text-primary); letter-spacing: -0.02em; }
-        .brand-headline { font-family: var(--font-display); font-size: clamp(2rem, 3.5vw, 2.75rem); font-weight: 700; line-height: 1.15; letter-spacing: -0.03em; color: var(--color-text-primary); }
-        .brand-accent { color: var(--color-accent); }
-        .brand-sub { margin-top: 16px; font-size: 1rem; line-height: 1.7; color: var(--color-text-secondary); }
-        .brand-stats { display: flex; gap: 32px; padding-top: 8px; border-top: 1px solid var(--color-border-subtle); }
-        .brand-stat { display: flex; flex-direction: column; gap: 2px; }
-        .brand-stat-value { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--color-accent); }
-        .brand-stat-label { font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
-        .brand-grid { position: absolute; inset: 0; background-image: linear-gradient(var(--color-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px); background-size: 40px 40px; opacity: 0.4; mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%); }
-        .auth-form-panel { flex: 1; display: flex; align-items: center; justify-content: center; padding: 48px 32px; }
-        .auth-form-container { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 28px; }
-        .auth-header { display: flex; flex-direction: column; gap: 8px; }
-        .auth-title { font-family: var(--font-display); font-size: 1.625rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-text-primary); }
-        .auth-subtitle { font-size: 0.875rem; color: var(--color-text-secondary); }
-        .auth-link { color: var(--color-accent); text-decoration: none; font-weight: 500; transition: color 0.15s; }
-        .auth-link:hover { color: var(--color-accent-hover); text-decoration: underline; }
-        .auth-alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--radius-md); font-size: 0.875rem; animation: slideDown 0.2s ease-out; }
-        .auth-alert--error { background: var(--color-error-muted); border: 1px solid rgba(239, 68, 68, 0.25); color: #fca5a5; }
-        .auth-alert-content { display: flex; flex-direction: column; gap: 4px; }
-        .auth-form { display: flex; flex-direction: column; gap: 20px; }
-        .field-group { display: flex; flex-direction: column; gap: 6px; }
-        .field-label { font-size: 0.875rem; font-weight: 500; color: var(--color-text-secondary); }
-        .field-input-wrapper { position: relative; display: flex; align-items: center; }
-        .field-icon { position: absolute; left: 14px; color: var(--color-text-muted); pointer-events: none; }
-        .field-input { width: 100%; height: 44px; padding: 0 14px 0 42px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text-primary); font-family: var(--font-sans); font-size: 0.9375rem; transition: border-color 0.15s, box-shadow 0.15s; outline: none; }
-        .field-input::placeholder { color: var(--color-text-muted); }
-        .field-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-muted); }
-        .field-input--password { padding-right: 44px; }
-        .field-toggle { position: absolute; right: 12px; background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 4px; border-radius: var(--radius-sm); display: flex; align-items: center; transition: color 0.15s; }
-        .field-toggle:hover { color: var(--color-text-secondary); }
-        .btn-primary { width: 100%; height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--color-accent); color: #fff; border: none; border-radius: var(--radius-md); font-family: var(--font-sans); font-size: 0.9375rem; font-weight: 600; cursor: pointer; transition: background 0.15s, transform 0.1s, box-shadow 0.15s; margin-top: 4px; }
-        .btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3); }
-        .btn-spinner { animation: spin 0.75s linear infinite; }
-        .status-badge { display: inline-flex; padding: 20px; background: rgba(34, 197, 94, 0.1); border-radius: 50%; border: 1px solid rgba(34, 197, 94, 0.2); }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 768px) {
-          .auth-layout { flex-direction: column; }
-          .auth-brand { flex: 0 0 auto; padding: 32px 24px; border-right: none; border-bottom: 1px solid var(--color-border); }
-          .auth-brand-inner { padding: 24px; gap: 24px; }
-          .auth-form-panel { padding: 32px 24px; }
-        }
-      `}</style>
     </div>
   )
 }

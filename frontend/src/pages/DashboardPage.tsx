@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { LogOut, LayoutDashboard } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
