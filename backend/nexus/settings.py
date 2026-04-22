@@ -112,3 +112,11 @@ CORS_ALLOW_CREDENTIALS = True
 # ─── LOGIN RATE LIMITING ──────────────────────────────────────────────────────
 LOGIN_MAX_ATTEMPTS = 5
 LOGIN_LOCKOUT_MINUTES = 15
+
+# ─── EMAIL SETTINGS ───────────────────────────────────────────────────────────
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "noreply@nexuspm.com"
+
+# ─── PASSWORD RESET ───────────────────────────────────────────────────────────
+# Timeout in seconds (30 minutes = 1800s)
+PASSWORD_RESET_TIMEOUT = 1800
