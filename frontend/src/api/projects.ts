@@ -1,34 +1,33 @@
 import apiClient from '@/lib/apiClient'
 
 export interface Task {
-  id: number
+  id: string
   title: string
   description: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
-  order: number
-  column: number
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  type: 'feature' | 'bug' | 'task' | 'story'
+  key: string
   assignee?: any
-  history: any[]
 }
 
 export interface Column {
-  id: number
+  id: string
   name: string
-  order: number
-  wip_limit: number
+  position: number
+  is_done_column: boolean
   tasks: Task[]
 }
 
 export interface Project {
-  id: number
+  id: string
   name: string
   key: string
   description: string
   columns: Column[]
 }
 
-export const getProjectDetailApi = (id: string | number) =>
-  apiClient.get<Project>(`/projects/${id}/`)
+export const getProjectDetailApi = (id: string) =>
+  apiClient.get<Project>(`/v1/projects/${id}/`)
 
-export const moveTaskApi = (taskId: number, columnId: number, order?: number) =>
-  apiClient.patch(`/tasks/${taskId}/move/`, { column_id: columnId, order })
+export const moveTaskApi = (taskId: string, columnId: string) =>
+  apiClient.post(`/v1/tasks/${taskId}/move/`, { column: columnId })

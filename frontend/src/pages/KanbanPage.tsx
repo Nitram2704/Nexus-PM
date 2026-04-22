@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, MoreHorizontal, User, History as HistoryIcon } from 'lucide-react'
+import { Loader2, Plus, MoreHorizontal, User } from 'lucide-react'
 import { getProjectDetailApi, moveTaskApi } from '@/api/projects'
-import type { Project, Column, Task } from '@/api/projects'
+import type { Project } from '@/api/projects'
 import toast from 'react-hot-toast'
 
 export function KanbanPage() {
@@ -12,12 +12,15 @@ export function KanbanPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    loadProject()
+    if (projectId) {
+      loadProject()
+    }
   }, [projectId])
 
   const loadProject = async () => {
+    if (!projectId) return
     try {
-      const { data } = await getProjectDetailApi(projectId || 1) // Default to 1 for demo
+      const { data } = await getProjectDetailApi(projectId)
       setProject(data)
     } catch (err) {
       toast.error('Error al cargar el proyecto')
@@ -33,8 +36,8 @@ export function KanbanPage() {
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
     // Optimistic UI update
-    const sourceCol = project?.columns.find(c => c.id.toString() === source.droppableId)
-    const destCol = project?.columns.find(c => c.id.toString() === destination.droppableId)
+    const sourceCol = project?.columns.find(c => c.id === source.droppableId)
+    const destCol = project?.columns.find(c => c.id === destination.droppableId)
     
     if (!project || !sourceCol || !destCol) return
 
@@ -61,7 +64,7 @@ export function KanbanPage() {
 
     // API Call
     try {
-      await moveTaskApi(parseInt(draggableId), parseInt(destination.droppableId), destination.index)
+      await moveTaskApi(draggableId, destination.droppableId)
       toast.success('Estado actualizado', { duration: 1500, position: 'bottom-right' })
     } catch (err) {
       toast.error('Error al guardar el cambio')
@@ -114,7 +117,7 @@ export function KanbanPage() {
                   <button className="column-menu-btn"><MoreHorizontal size={16} /></button>
                 </div>
 
-                <Droppable droppableId={column.id.toString()}>
+                <Droppable droppableId={column.id}>
                   {(provided, snapshot) => (
                     <div
                       {...provided.droppableProps}
@@ -122,7 +125,7 @@ export function KanbanPage() {
                       className={`column-content ${snapshot.isDraggingOver ? 'column-content--active' : ''}`}
                     >
                       {column.tasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                        <Draggable key={task.id} draggableId={task.id} index={index}>
                           {(provided, snapshot) => (
                             <div
                               ref={provided.innerRef}
@@ -136,10 +139,7 @@ export function KanbanPage() {
                               <h4 className="task-title">{task.title}</h4>
                               <div className="task-footer">
                                 <div className="task-meta">
-                                  <span className="task-id">#{task.id}</span>
-                                  {task.history.length > 0 && (
-                                    <HistoryIcon size={12} className="text-muted" title="Historial disponible" />
-                                  )}
+                                  <span className="task-id">{task.key}</span>
                                 </div>
                                 <div className="task-assignee">
                                   <div className="assignee-avatar">
@@ -179,8 +179,9 @@ export function KanbanPage() {
         .task-card:hover { border-color: var(--color-accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
         .task-card--dragging { cursor: grabbing; border-color: var(--color-accent); box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 10; }
         .task-priority-tag { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
-        .task-priority-tag[data-priority="HIGH"] { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
-        .task-priority-tag[data-priority="MEDIUM"] { background: rgba(59, 130, 246, 0.1); color: #93c5fd; }
+        .task-priority-tag[data-priority="high"] { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
+        .task-priority-tag[data-priority="medium"] { background: rgba(59, 130, 246, 0.1); color: #93c5fd; }
+        .task-priority-tag[data-priority="low"] { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; }
         .task-title { font-size: 0.9375rem; font-weight: 500; color: var(--color-text-primary); margin-bottom: 12px; line-height: 1.4; }
         .task-footer { display: flex; align-items: center; justify-content: space-between; }
         .task-meta { display: flex; align-items: center; gap: 8px; }

@@ -10,7 +10,7 @@ from .serializers import (
     ProjectSerializer, 
     ProjectDetailSerializer, 
     MemberSerializer, 
-    AddMemberSerializer
+    InviteMemberSerializer
 )
 from .permissions import IsProjectMember, IsProjectOwnerOrAdmin
 
@@ -29,7 +29,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return ProjectDetailSerializer
         if self.action == 'invite':
-            return AddMemberSerializer
+            return InviteMemberSerializer
         return ProjectSerializer
 
     def get_queryset(self):
@@ -55,7 +55,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsProjectMember()]
         return super().get_permissions()
 
-    @action(detail=True, methods=['post'], serializer_class=AddMemberSerializer)
+    @action(detail=True, methods=['post'], serializer_class=InviteMemberSerializer)
     def invite(self, request, pk=None):
         """
         Invita a un usuario existente al proyecto.
