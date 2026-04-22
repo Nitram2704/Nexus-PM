@@ -1,9 +1,8 @@
 from django.apps import AppConfig
 
 
-class ProjectsConfig(AppConfig):
+class TasksConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.projects'
-
+    name = 'apps.tasks'
     def ready(self):
-        import apps.projects.signals
+        import apps.tasks.signals

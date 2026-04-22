@@ -1,51 +1,84 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import get_object_or_404
-from .models import Project, Column, Task, TaskHistory
-from .serializers import ProjectSerializer, ColumnSerializer, TaskSerializer
+from django.db.models import Count
+from django.contrib.auth import get_user_model
 
+from .models import Project, Member, Column
+from .serializers import (
+    ProjectSerializer, 
+    ProjectDetailSerializer, 
+    MemberSerializer, 
+    AddMemberSerializer
+)
+from .permissions import IsProjectMember, IsProjectOwnerOrAdmin
+
+User = get_user_model()
 
 class ProjectViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar proyectos.
+    - El listado solo muestra proyectos donde el usuario es miembro.
+    - Se asigna automáticamente al creador como 'Propietario'.
+    """
     queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return ProjectDetailSerializer
+        if self.action == 'invite':
+            return AddMemberSerializer
+        return ProjectSerializer
+
+    def get_queryset(self):
+        # Optimización: anotar conteo de miembros y filtrar por membresía
+        return Project.objects.filter(
+            members__user=self.request.user
+        ).annotate(member_count=Count('members'))
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        # Crear el proyecto
+        project = serializer.save(owner=self.request.user)
+        # Crear la relación de Miembro como Propietario
+        Member.objects.create(
+            project=project,
+            user=self.request.user,
+            role='owner'
+        )
 
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update', 'destroy', 'invite']:
+            return [IsAuthenticated(), IsProjectOwnerOrAdmin()]
+        if self.action in ['retrieve']:
+            return [IsAuthenticated(), IsProjectMember()]
+        return super().get_permissions()
 
-class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all()
-    serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
+    @action(detail=True, methods=['post'], serializer_class=AddMemberSerializer)
+    def invite(self, request, pk=None):
+        """
+        Invita a un usuario existente al proyecto.
+        """
+        project = self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            role = serializer.validated_data['role']
+            user_to_invite = User.objects.get(email=email)
 
-    @action(detail=True, methods=["patch"], url_path="move")
-    def move_task(self, request, pk=None):
-        task = self.get_object()
-        new_column_id = request.data.get("column_id")
-        new_order = request.data.get("order")
+            if Member.objects.filter(project=project, user=user_to_invite).exists():
+                return Response(
+                    {"error": "El usuario ya es miembro de este proyecto."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        if not new_column_id:
-            return Response({"detail": "column_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        new_column = get_object_or_404(Column, id=new_column_id, project=task.project)
-        old_column_name = task.column.name
-
-        # Registrar en el historial si la columna cambió
-        if task.column != new_column:
-            TaskHistory.objects.create(
-                task=task,
-                user=request.user,
-                field="column",
-                old_value=old_column_name,
-                new_value=new_column.name
+            Member.objects.create(
+                project=project,
+                user=user_to_invite,
+                role=role
             )
-            task.column = new_column
-
-        if new_order is not None:
-            task.order = new_order
-
-        task.save()
-        return Response(TaskSerializer(task).data)
+            return Response({"message": f"Usuario {email} invitado exitosamente."}, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
