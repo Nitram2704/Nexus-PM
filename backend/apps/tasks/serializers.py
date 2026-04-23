@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Task, Sprint
+from .models import Task, Sprint, Comment
 from apps.projects.models import Member, Column, Project
 from django.contrib.auth import get_user_model
 
@@ -75,3 +75,11 @@ class TaskMoveSerializer(serializers.Serializer):
         if value.project != task.project:
             raise serializers.ValidationError("La columna no pertenece al proyecto de la tarea.")
         return value
+
+class CommentSerializer(serializers.ModelSerializer):
+    author_email = serializers.EmailField(source='author.email', read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'task', 'author', 'author_email', 'content', 'created_at']
+        read_only_fields = ['author', 'created_at']

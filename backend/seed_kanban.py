@@ -5,7 +5,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'nexus.settings')
 django.setup()
 
 from apps.accounts.models import User
-from apps.projects.models import Project, Column, Task
+from apps.projects.models import Project, Column
+from apps.tasks.models import Task
 
 def seed_project():
     user = User.objects.get(email='test@nexus.com')
@@ -20,19 +21,25 @@ def seed_project():
     )
     
     if created:
-        # Crear columnas base
-        col1 = Column.objects.create(project=project, name='To Do', order=0)
-        col2 = Column.objects.create(project=project, name='In Progress', order=1)
-        col3 = Column.objects.create(project=project, name='Done', order=2)
+        # Crear Sprint activo
+        from apps.tasks.models import Sprint
+        sprint = Sprint.objects.create(
+            project=project,
+            name='Sprint 1',
+            status='active'
+        )
+
+        # Usar columnas creadas por la señal post_save
+        col1 = project.columns.get(position=0)
         
         # Crear tareas iniciales
         Task.objects.create(
-            project=project, column=col1, title='Configurar Auth', 
-            creator=user, priority='HIGH', order=0
+            project=project, column=col1, sprint=sprint, title='Configurar Auth', 
+            creator=user, priority='high'
         )
         Task.objects.create(
-            project=project, column=col1, title='Diseñar Kanban', 
-            creator=user, priority='MEDIUM', order=1
+            project=project, column=col1, sprint=sprint, title='Diseñar Kanban', 
+            creator=user, priority='medium'
         )
         print("Proyecto y tareas de prueba creados.")
     else:

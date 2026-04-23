@@ -14,6 +14,15 @@ export interface Sprint {
   updated_at: string
 }
 
+export interface Member {
+  id: string
+  user: number
+  user_email: string
+  user_name: string
+  role: 'owner' | 'admin' | 'member' | 'viewer'
+  joined_at: string
+}
+
 export interface Task {
   id: string
   project: string
@@ -23,7 +32,7 @@ export interface Task {
   description: string
   key: string
   type: 'feature' | 'bug' | 'task' | 'story'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  priority: 'low' | 'medium' | 'high'
   status: string
   assignee: number | null
   assignee_email: string
@@ -33,6 +42,15 @@ export interface Task {
   parent: string | null
   created_at: string
   updated_at: string
+}
+
+export interface Comment {
+  id: string
+  task: string
+  author: number
+  author_email: string
+  content: string
+  created_at: string
 }
 
 export interface Column {
@@ -53,6 +71,7 @@ export interface Project {
   is_archived: boolean
   task_counter: number
   columns: Column[]
+  members: Member[]
   created_at: string
   updated_at: string
 }

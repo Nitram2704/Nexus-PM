@@ -1,6 +1,4 @@
 import apiClient from '@/lib/apiClient'
-
-import apiClient from '@/lib/apiClient'
 import type { Project } from '@/types/project'
 
 export const getProjectDetailApi = (id: string) =>

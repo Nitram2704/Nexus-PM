@@ -1,5 +1,5 @@
 import apiClient from '@/lib/apiClient'
-import type { Task } from '@/types/project'
+import type { Task, Comment } from '@/types/project'
 
 export const getTasksApi = (projectId: string, sprintId?: string | null) => {
   let url = `/v1/tasks/?project=${projectId}`
@@ -17,3 +17,9 @@ export const updateTaskApi = (taskId: string, data: Partial<Task>) =>
 
 export const moveTaskApi = (taskId: string, columnId: string) =>
   apiClient.post<Task>(`/v1/tasks/${taskId}/move/`, { column: columnId })
+
+export const getTaskCommentsApi = (taskId: string) =>
+  apiClient.get<Comment[]>(`/v1/comments/?task=${taskId}`)
+
+export const addCommentApi = (taskId: string, content: string) =>
+  apiClient.post<Comment>('/v1/comments/', { task: taskId, content })

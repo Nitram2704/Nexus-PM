@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Task, Sprint
-from .serializers import TaskSerializer, TaskMoveSerializer, SprintSerializer
+from .models import Task, Sprint, Comment
+from .serializers import TaskSerializer, TaskMoveSerializer, SprintSerializer, CommentSerializer
 from apps.projects.permissions import IsProjectMember
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
@@ -83,3 +83,16 @@ class TaskViewSet(viewsets.ModelViewSet):
             task.save()
             return Response(TaskSerializer(task).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsProjectMember]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['task']
+
+    def get_queryset(self):
+        return Comment.objects.filter(task__project__members__user=self.request.user).distinct()
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
