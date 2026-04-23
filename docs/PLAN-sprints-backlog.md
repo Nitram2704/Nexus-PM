@@ -39,9 +39,15 @@ Este plan detalla la implementación del ciclo de vida de los Sprints y su vincu
 - [x] **T2.1**: Implementar validación en `Sprint.save()` para evitar múltiples sprints activos.
 - [x] **T2.2**: Lógica de cierre: Implementada acción `complete` en ViewSet para mover tareas al backlog.
 
-### Fase 3: API & Frontend Integration [EN PROGRESO]
+### Fase 3: API & Frontend Integration [COMPLETADA]
 - [x] **T3.1**: Registrar URLs de Sprints en `urls.py`.
-- [ ] **T3.2**: Crear types y servicios API en el frontend (`frontend/src/api/sprints.ts`).
+- [x] **T3.2**: Crear types y servicios API en el frontend (`frontend/src/api/sprints.ts`).
+
+### Fase 4: UI Components (Backlog & Planning) [SIGUIENTE]
+- [ ] **T4.1**: Crear componentes base: `SprintList`, `BacklogList`, `SprintCard`.
+- [ ] **T4.2**: Implementar lógica de Drag & Drop para asignar tareas a Sprints.
+- [ ] **T4.3**: Modales para creación de Sprints y Tareas.
+- [ ] **T4.4**: Acciones de ciclo de vida (Iniciar/Completar Sprint) con feedback visual.
 
 ## Verification Plan
 
