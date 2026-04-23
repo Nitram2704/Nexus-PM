@@ -54,3 +54,4 @@ Este plan detalla la implementación del ciclo de vida de los Sprints y su vincu
 **Agentes Responsables:**
 - Backend & DB: `backend-specialist`, `database-architect`
 - Test: `test-engineer`
+- AI Strategy: `caveman-mode` (Terse & token-efficient communication for Scrum Master)
