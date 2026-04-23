@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import { Loader2, Plus, MoreHorizontal, User } from 'lucide-react'
-import { getProjectDetailApi, moveTaskApi } from '@/api/projects'
-import type { Project } from '@/api/projects'
+import { getProjectDetailApi } from '@/api/projects'
+import { getSprintsApi } from '@/api/sprints'
+import { updateTaskApi } from '@/api/tasks'
+import type { Project, Sprint } from '@/types/project'
 import toast from 'react-hot-toast'
+import { Link } from 'react-router-dom'
 
 export function KanbanPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const [project, setProject] = useState<Project | null>(null)
+  const [sprints, setSprints] = useState<Sprint[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -20,10 +24,14 @@ export function KanbanPage() {
   const loadProject = async () => {
     if (!projectId) return
     try {
-      const { data } = await getProjectDetailApi(projectId)
-      setProject(data)
+      const [projRes, sprintRes] = await Promise.all([
+        getProjectDetailApi(projectId),
+        getSprintsApi(projectId)
+      ])
+      setProject(projRes.data)
+      setSprints(sprintRes.data)
     } catch (err) {
-      toast.error('Error al cargar el proyecto')
+      toast.error('Error al cargar el tablero')
     } finally {
       setIsLoading(false)
     }
@@ -64,7 +72,7 @@ export function KanbanPage() {
 
     // API Call
     try {
-      await moveTaskApi(draggableId, destination.droppableId)
+      await updateTaskApi(draggableId, { column: destination.droppableId })
       toast.success('Estado actualizado', { duration: 1500, position: 'bottom-right' })
     } catch (err) {
       toast.error('Error al guardar el cambio')
@@ -81,14 +89,12 @@ export function KanbanPage() {
     )
   }
 
-  if (!project) {
-    return (
-      <div className="kanban-loading">
-        <p>No se encontró el proyecto o no tienes acceso.</p>
-        <button onClick={loadProject} className="btn-secondary mt-4">Reintentar</button>
-      </div>
-    )
-  }
+  const activeSprint = sprints.find(s => s.status === 'active')
+  
+  const boardColumns = project.columns.map(col => ({
+    ...col,
+    tasks: col.tasks.filter(t => t.sprint === (activeSprint?.id || null))
+  }))
 
   return (
     <div className="kanban-wrapper">
@@ -96,18 +102,38 @@ export function KanbanPage() {
         <div className="kanban-header-left">
           <h1 className="kanban-project-title">{project?.name}</h1>
           <span className="kanban-project-key">{project?.key}</span>
+          {activeSprint && (
+            <div className="active-sprint-badge">
+              <span className="dot"></span>
+              {activeSprint.name}
+            </div>
+          )}
         </div>
         <div className="kanban-header-actions">
-          <button className="btn-secondary">
+          <Link to={`/project/${projectId}/backlog`} className="btn-secondary">
+            Planificación
+          </Link>
+          <button className="btn-primary">
             <Plus size={16} /> Nuevo Ítem
           </button>
         </div>
       </header>
 
-      <main className="kanban-board-container">
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="kanban-board">
-            {project?.columns.map((column) => (
+      {!activeSprint && (
+        <div className="no-active-sprint-warning">
+          <h3>No hay un sprint activo</h3>
+          <p>Ve a planificación para iniciar uno o trabajar en el backlog.</p>
+          <Link to={`/project/${projectId}/backlog`} className="btn-primary mt-4">
+            Ir a Planificación
+          </Link>
+        </div>
+      )}
+
+      {activeSprint && (
+        <main className="kanban-board-container">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="kanban-board">
+              {boardColumns.map((column) => (
               <div key={column.id} className="kanban-column">
                 <div className="column-header">
                   <h3 className="column-title">
@@ -159,7 +185,8 @@ export function KanbanPage() {
             ))}
           </div>
         </DragDropContext>
-      </main>
+        </main>
+      )}
 
       <style>{`
         .kanban-wrapper { height: calc(100vh - 60px); display: flex; flex-direction: column; background: var(--color-bg); }
@@ -189,7 +216,12 @@ export function KanbanPage() {
         .assignee-avatar { width: 24px; height: 24px; background: var(--color-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
         .kanban-loading { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--color-text-secondary); }
         .btn-secondary { display: flex; align-items: center; gap: 6px; background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
-        .btn-secondary:hover { background: var(--color-border-subtle); }
+        .active-sprint-badge { display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-left: 12px; }
+        .active-sprint-badge .dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+        .no-active-sprint-warning { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--color-text-secondary); }
+        .no-active-sprint-warning h3 { font-size: 1.5rem; color: var(--color-text-primary); margin-bottom: 8px; }
+        .btn-primary { background: var(--color-accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+        .mt-4 { margin-top: 1rem; }
       `}</style>
     </div>
   )
