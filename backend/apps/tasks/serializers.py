@@ -37,19 +37,18 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only_fields = ['key', 'creator', 'created_at', 'updated_at']
 
     def validate(self, data):
-        project = data.get('project')
+        # Para PATCH, tomamos los valores actuales de la instancia si no vienen en data
+        project = data.get('project') or (self.instance.project if self.instance else None)
         assignee = data.get('assignee')
         column = data.get('column')
         sprint = data.get('sprint')
 
         # Validar que el sprint pertenezca al proyecto
-        if sprint and sprint.project != project:
-            raise serializers.ValidationError({
-                "sprint": "El sprint seleccionado no pertenece a este proyecto."
-            })
-        project = data.get('project')
-        assignee = data.get('assignee')
-        column = data.get('column')
+        if sprint:
+            if sprint.project != project:
+                raise serializers.ValidationError({
+                    "sprint": "El sprint seleccionado no pertenece a este proyecto."
+                })
 
         # Validar que el assignee sea miembro del proyecto
         if assignee:

@@ -6,9 +6,10 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: React.ReactNode
+  maxWidth?: string
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, maxWidth = '500px' }: ModalProps) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -59,7 +60,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           border: 1px solid var(--color-border);
           border-radius: 12px;
           width: 100%;
-          max-width: 500px;
+          max-width: ${maxWidth};
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
           animation: modal-fade-in 0.3s ease-out;
         }

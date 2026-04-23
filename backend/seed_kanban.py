@@ -21,6 +21,14 @@ def seed_project():
     )
     
     if created:
+        # Crear la relación de Miembro como Propietario (importante para el filtrado de queryset)
+        from apps.projects.models import Member
+        Member.objects.create(
+            project=project,
+            user=user,
+            role='owner'
+        )
+
         # Crear Sprint activo
         from apps.tasks.models import Sprint
         sprint = Sprint.objects.create(
