@@ -1,9 +1,25 @@
 from rest_framework import serializers
-from .models import Task
-from apps.projects.models import Member, Column
+from .models import Task, Sprint
+from apps.projects.models import Member, Column, Project
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+class SprintSerializer(serializers.ModelSerializer):
+    task_count = serializers.IntegerField(source='tasks.count', read_only=True)
+    completed_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Sprint
+        fields = [
+            'id', 'project', 'name', 'goal', 'status', 
+            'start_date', 'end_date', 'task_count', 'completed_count',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+    def get_completed_count(self, obj):
+        return obj.tasks.filter(column__is_done_column=True).count()
 
 class TaskSerializer(serializers.ModelSerializer):
     status = serializers.CharField(source='column.name', read_only=True)
@@ -13,7 +29,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = [
-            'id', 'project', 'column', 'title', 'description', 'key',
+            'id', 'project', 'sprint', 'column', 'title', 'description', 'key',
             'type', 'priority', 'status', 'assignee', 'assignee_email',
             'creator', 'creator_email', 'story_points', 'parent',
             'created_at', 'updated_at'
@@ -21,6 +37,16 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only_fields = ['key', 'creator', 'created_at', 'updated_at']
 
     def validate(self, data):
+        project = data.get('project')
+        assignee = data.get('assignee')
+        column = data.get('column')
+        sprint = data.get('sprint')
+
+        # Validar que el sprint pertenezca al proyecto
+        if sprint and sprint.project != project:
+            raise serializers.ValidationError({
+                "sprint": "El sprint seleccionado no pertenece a este proyecto."
+            })
         project = data.get('project')
         assignee = data.get('assignee')
         column = data.get('column')
