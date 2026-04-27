@@ -16,6 +16,8 @@ import {
   moveAllTasksApi, 
   deleteColumnApi 
 } from '@/api/columns'
+import { ConfirmDialog } from '@/components/kanban/ConfirmDialog'
+import { supabase } from '@/lib/supabase'
 
 export function KanbanPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -23,10 +25,63 @@ export function KanbanPage() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  
+  // States for Actions and Confirmations
+  const [busyColumnId, setBusyColumnId] = useState<string | null>(null)
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    type: 'clear' | 'move_all' | 'delete' | null;
+    columnId: string;
+    targetColumnId?: string;
+    columnName: string;
+    targetColumnName?: string;
+  }>({
+    isOpen: false,
+    type: null,
+    columnId: '',
+    columnName: ''
+  })
 
   useEffect(() => {
     if (projectId) {
       loadProject()
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    if (!projectId) return
+
+    // Subscribe to task and column changes for realtime updates
+    const channel = supabase
+      .channel('kanban-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'tasks_task'
+        },
+        (payload: any) => {
+          // Optional: only refresh if the task belongs to this project
+          // (Requires checking payload.new.project_id if available)
+          loadProject()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'projects_column'
+        },
+        () => {
+          loadProject()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
   }, [projectId])
 
@@ -101,6 +156,7 @@ export function KanbanPage() {
 
   const handleRenameColumn = async (columnId: string, newName: string) => {
     try {
+      setBusyColumnId(columnId)
       await renameColumnApi(columnId, newName)
       setProject(prev => {
         if (!prev) return null
@@ -112,50 +168,49 @@ export function KanbanPage() {
       toast.success('Columna renombrada')
     } catch (err) {
       toast.error('Error al renombrar columna')
+    } finally {
+      setBusyColumnId(null)
     }
   }
 
-  const handleClearColumn = async (columnId: string) => {
-    if (!window.confirm('¿Estás seguro de eliminar todas las tareas de esta columna?')) return
-    try {
-      await clearColumnTasksApi(columnId)
-      setProject(prev => {
-        if (!prev) return null
-        return {
-          ...prev,
-          columns: prev.columns.map(col => col.id === columnId ? { ...col, tasks: [] } : col)
-        }
-      })
-      toast.success('Columna vaciada')
-    } catch (err) {
-      toast.error('Error al vaciar columna')
-    }
-  }
+  const handleConfirmAction = async () => {
+    const { type, columnId, targetColumnId, columnName, targetColumnName } = confirmConfig
+    if (!type || !columnId) return
 
-  const handleMoveAllTasks = async (columnId: string, targetColumnId: string) => {
-    try {
-      await moveAllTasksApi(columnId, targetColumnId)
-      loadProject() // Reload to get updated state across columns
-      toast.success('Tareas movidas exitosamente')
-    } catch (err) {
-      toast.error('Error al mover tareas')
-    }
-  }
+    setBusyColumnId(columnId)
+    setConfirmConfig(prev => ({ ...prev, isOpen: false }))
 
-  const handleDeleteColumn = async (columnId: string) => {
-    if (!window.confirm('¿Estás seguro de eliminar esta columna? Las tareas se perderán.')) return
     try {
-      await deleteColumnApi(columnId)
-      setProject(prev => {
-        if (!prev) return null
-        return {
-          ...prev,
-          columns: prev.columns.filter(col => col.id !== columnId)
-        }
-      })
-      toast.success('Columna eliminada')
-    } catch (err) {
-      toast.error('Error al eliminar columna')
+      if (type === 'clear') {
+        const res = await clearColumnTasksApi(columnId)
+        setProject(prev => {
+          if (!prev) return null
+          return {
+            ...prev,
+            columns: prev.columns.map(col => col.id === columnId ? { ...col, tasks: [] } : col)
+          }
+        })
+        toast.success(res.data.message || 'Columna vaciada')
+      } else if (type === 'move_all' && targetColumnId) {
+        const res = await moveAllTasksApi(columnId, targetColumnId)
+        await loadProject() // Reload to sync state correctly
+        toast.success(res.data.message || `Tareas movidas a ${targetColumnName}`)
+      } else if (type === 'delete') {
+        await deleteColumnApi(columnId)
+        setProject(prev => {
+          if (!prev) return null
+          return {
+            ...prev,
+            columns: prev.columns.filter(col => col.id !== columnId)
+          }
+        })
+        toast.success(`Columna '${columnName}' eliminada`)
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Error al procesar la acción')
+    } finally {
+      setBusyColumnId(null)
+      setConfirmConfig({ isOpen: false, type: null, columnId: '', columnName: '' })
     }
   }
 
@@ -222,10 +277,31 @@ export function KanbanPage() {
                   <ColumnMenu 
                     column={column}
                     otherColumns={boardColumns.filter(c => c.id !== column.id)}
+                    isLoading={busyColumnId === column.id}
                     onRename={(newName) => handleRenameColumn(column.id, newName)}
-                    onClear={() => handleClearColumn(column.id)}
-                    onMoveAll={(targetId) => handleMoveAllTasks(column.id, targetId)}
-                    onDelete={() => handleDeleteColumn(column.id)}
+                    onClear={() => setConfirmConfig({
+                      isOpen: true,
+                      type: 'clear',
+                      columnId: column.id,
+                      columnName: column.name
+                    })}
+                    onMoveAll={(targetId) => {
+                      const target = project?.columns.find(c => c.id === targetId)
+                      setConfirmConfig({
+                        isOpen: true,
+                        type: 'move_all',
+                        columnId: column.id,
+                        targetColumnId: targetId,
+                        columnName: column.name,
+                        targetColumnName: target?.name || 'otra columna'
+                      })
+                    }}
+                    onDelete={() => setConfirmConfig({
+                      isOpen: true,
+                      type: 'delete',
+                      columnId: column.id,
+                      columnName: column.name
+                    })}
                   />
                 </div>
 
@@ -280,6 +356,29 @@ export function KanbanPage() {
         members={project?.members || []}
         onClose={() => setSelectedTask(null)}
         onUpdate={handleTaskUpdate}
+      />
+
+      <ConfirmDialog 
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
+        onConfirm={handleConfirmAction}
+        isLoading={!!busyColumnId}
+        title={
+          confirmConfig.type === 'clear' ? '¿Vaciar columna?' :
+          confirmConfig.type === 'move_all' ? '¿Mover tareas?' :
+          '¿Eliminar columna?'
+        }
+        description={
+          confirmConfig.type === 'clear' ? `¿Estás seguro de que quieres eliminar todas las tareas de la columna "${confirmConfig.columnName}"? Esta acción no se puede deshacer.` :
+          confirmConfig.type === 'move_all' ? `¿Quieres mover todas las tareas de "${confirmConfig.columnName}" a "${confirmConfig.targetColumnName}"?` :
+          `¿Estás seguro de eliminar la columna "${confirmConfig.columnName}"? Todas las tareas que contenga se perderán permanentemente.`
+        }
+        confirmText={
+          confirmConfig.type === 'clear' ? 'Vaciar tareas' :
+          confirmConfig.type === 'move_all' ? 'Mover ahora' :
+          'Eliminar columna'
+        }
+        variant={confirmConfig.type === 'move_all' ? 'info' : 'danger'}
       />
 
       <style>{`

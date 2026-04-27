@@ -9,9 +9,10 @@ interface ColumnMenuProps {
   onClear: () => void
   onMoveAll: (targetColumnId: string) => void
   onDelete: () => void
+  isLoading?: boolean
 }
 
-export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll, onDelete }: ColumnMenuProps) {
+export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll, onDelete, isLoading = false }: ColumnMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [newName, setNewName] = useState(column.name)
@@ -40,11 +41,12 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
   return (
     <div className="relative" ref={menuRef}>
       <button 
-        className="column-menu-btn"
-        onClick={() => setIsOpen(!isOpen)}
+        className={`column-menu-btn ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onClick={() => !isLoading && setIsOpen(!isOpen)}
+        disabled={isLoading}
         title="Opciones de columna"
       >
-        <MoreHorizontal size={18} />
+        {isLoading ? <div className="btn-spinner-xs" /> : <MoreHorizontal size={18} />}
       </button>
 
       {isOpen && (
@@ -61,34 +63,40 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
             </form>
           ) : (
             <div className="flex flex-col py-1">
-              <button className="dropdown-item" onClick={() => setIsRenaming(true)}>
+              <button 
+                className="dropdown-item" 
+                onClick={() => setIsRenaming(true)}
+                disabled={isLoading}
+              >
                 <Edit2 size={14} /> <span>Renombrar</span>
               </button>
               
               <button 
                 className="dropdown-item" 
                 onClick={() => { onClear(); setIsOpen(false); }}
-                disabled={column.tasks.length === 0}
+                disabled={column.tasks.length === 0 || isLoading}
               >
                 <Eraser size={14} /> <span>Limpiar columna</span>
               </button>
 
               {otherColumns.length > 0 && (
                 <div className="dropdown-submenu">
-                  <div className="dropdown-item dropdown-item--has-sub">
+                  <div className={`dropdown-item dropdown-item--has-sub ${isLoading ? 'opacity-50' : ''}`}>
                     <ArrowRight size={14} /> <span>Mover todo a...</span>
                   </div>
-                  <div className="submenu-content">
-                    {otherColumns.map(col => (
-                      <button 
-                        key={col.id} 
-                        className="dropdown-item dropdown-item--sub"
-                        onClick={() => { onMoveAll(col.id); setIsOpen(false); }}
-                      >
-                        {col.name}
-                      </button>
-                    ))}
-                  </div>
+                  {!isLoading && (
+                    <div className="submenu-content">
+                      {otherColumns.map(col => (
+                        <button 
+                          key={col.id} 
+                          className="dropdown-item dropdown-item--sub"
+                          onClick={() => { onMoveAll(col.id); setIsOpen(false); }}
+                        >
+                          {col.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -97,7 +105,7 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
               <button 
                 className="dropdown-item dropdown-item--danger" 
                 onClick={() => { onDelete(); setIsOpen(false); }}
-                disabled={column.is_done_column}
+                disabled={column.is_done_column || isLoading}
               >
                 <Trash2 size={14} /> <span>Eliminar columna</span>
               </button>
@@ -107,6 +115,16 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
       )}
 
       <style>{`
+        .btn-spinner-xs {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255,255,255,0.2);
+          border-top-color: var(--color-accent);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         .column-dropdown {
           position: absolute;
           top: 100%;

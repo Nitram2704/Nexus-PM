@@ -119,6 +119,9 @@ class ColumnViewSet(viewsets.ModelViewSet):
         
         if not target_id:
             return Response({"error": "Debe especificar target_column_id."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if str(target_id) == str(column.id):
+            return Response({"error": "No se puede mover tareas a la misma columna."}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
             target_column = Column.objects.get(pk=target_id, project=column.project)
