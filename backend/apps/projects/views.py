@@ -10,7 +10,8 @@ from .serializers import (
     ProjectSerializer, 
     ProjectDetailSerializer, 
     MemberSerializer, 
-    InviteMemberSerializer
+    InviteMemberSerializer,
+    ColumnSerializer
 )
 from .permissions import IsProjectMember, IsProjectOwnerOrAdmin
 
@@ -82,3 +83,52 @@ class ProjectViewSet(viewsets.ModelViewSet):
             return Response({"message": f"Usuario {email} invitado exitosamente."}, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ColumnViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestionar las columnas del proyecto.
+    """
+    queryset = Column.objects.all()
+    serializer_class = ColumnSerializer
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get_queryset(self):
+        return Column.objects.filter(project__members__user=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def clear_tasks(self, request, pk=None):
+        """
+        Borra todas las tareas dentro de una columna.
+        """
+        column = self.get_object()
+        tasks_count = column.tasks.count()
+        column.tasks.all().delete()
+        return Response({
+            "message": f"Se han eliminado {tasks_count} tareas de la columna.",
+            "count": tasks_count
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def move_all(self, request, pk=None):
+        """
+        Mueve todas las tareas de esta columna a otra.
+        """
+        column = self.get_object()
+        target_id = request.data.get('target_column_id')
+        
+        if not target_id:
+            return Response({"error": "Debe especificar target_column_id."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            target_column = Column.objects.get(pk=target_id, project=column.project)
+        except Column.DoesNotExist:
+            return Response({"error": "La columna destino no existe o no pertenece al mismo proyecto."}, status=status.HTTP_404_NOT_FOUND)
+        
+        tasks_count = column.tasks.count()
+        column.tasks.all().update(column=target_column)
+        
+        return Response({
+            "message": f"Se han movido {tasks_count} tareas a '{target_column.name}'.",
+            "count": tasks_count
+        }, status=status.HTTP_200_OK)

@@ -1,34 +1,46 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
 
-/* ─── Design Tokens ─────────────────────────────────────────────────────────── */
+/* ─── Design Tokens (Vector Midnight) ───────────────────────────────────────── */
 :root {
-  --color-bg: #0a0f1e;
-  --color-surface: #111827;
-  --color-surface-2: #1a2235;
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-2: #334155;
   --color-border: #1f2d45;
-  --color-border-subtle: #162032;
-  --color-accent: #3b82f6;
-  --color-accent-hover: #2563eb;
-  --color-accent-muted: rgba(59, 130, 246, 0.12);
-  --color-text-primary: #f1f5f9;
+  --color-border-subtle: #1e293b;
+  
+  /* Primary Colors */
+  --color-primary: #8b5cf6;
+  --color-primary-hover: #7c3aed;
+  --color-primary-muted: rgba(139, 92, 246, 0.12);
+  
+  /* Secondary & Tertiary */
+  --color-secondary: #06b6d4;
+  --color-tertiary: #b06b00;
+  
+  /* Legacy Accent Compatibility */
+  --color-accent: var(--color-primary);
+  --color-accent-hover: var(--color-primary-hover);
+  --color-accent-muted: var(--color-primary-muted);
+
+  --color-text-primary: #f8fafc;
   --color-text-secondary: #94a3b8;
-  --color-text-muted: #475569;
+  --color-text-muted: #64748b;
+  
   --color-error: #ef4444;
-  --color-error-muted: rgba(239, 68, 68, 0.1);
-  --color-success: #22c55e;
+  --color-success: #10b981;
   --color-warning: #f59e0b;
 
   --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
 
   --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
 
-  --shadow-glow: 0 0 40px rgba(59, 130, 246, 0.08);
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 40px rgba(139, 92, 246, 0.12);
+  --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 /* ─── Base Reset ────────────────────────────────────────────────────────────── */
@@ -318,9 +330,16 @@ body {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
 }
+
+/* ─── Utilities ─────────────────────────────────────────────────────────────── */
+.text-secondary-brand { color: var(--color-secondary); }
+.text-tertiary-brand { color: var(--color-tertiary); }
+.bg-secondary-brand { background: var(--color-secondary); }
+.bg-tertiary-brand { background: var(--color-tertiary); }
+.border-secondary-brand { border-color: var(--color-secondary); }
 
 .btn-spinner {
   animation: spin 0.75s linear infinite;

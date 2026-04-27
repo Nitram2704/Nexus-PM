@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, MoreHorizontal, User } from 'lucide-react'
+import { Loader2, Plus, User } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { getSprintsApi } from '@/api/sprints'
 import { updateTaskApi } from '@/api/tasks'
@@ -9,6 +9,13 @@ import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 import { TaskDetailDrawer } from '@/components/kanban/TaskDetailDrawer'
+import { ColumnMenu } from '@/components/kanban/ColumnMenu'
+import { 
+  renameColumnApi, 
+  clearColumnTasksApi, 
+  moveAllTasksApi, 
+  deleteColumnApi 
+} from '@/api/columns'
 
 export function KanbanPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -92,6 +99,66 @@ export function KanbanPage() {
     setSelectedTask(updatedTask)
   }
 
+  const handleRenameColumn = async (columnId: string, newName: string) => {
+    try {
+      await renameColumnApi(columnId, newName)
+      setProject(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          columns: prev.columns.map(col => col.id === columnId ? { ...col, name: newName } : col)
+        }
+      })
+      toast.success('Columna renombrada')
+    } catch (err) {
+      toast.error('Error al renombrar columna')
+    }
+  }
+
+  const handleClearColumn = async (columnId: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar todas las tareas de esta columna?')) return
+    try {
+      await clearColumnTasksApi(columnId)
+      setProject(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          columns: prev.columns.map(col => col.id === columnId ? { ...col, tasks: [] } : col)
+        }
+      })
+      toast.success('Columna vaciada')
+    } catch (err) {
+      toast.error('Error al vaciar columna')
+    }
+  }
+
+  const handleMoveAllTasks = async (columnId: string, targetColumnId: string) => {
+    try {
+      await moveAllTasksApi(columnId, targetColumnId)
+      loadProject() // Reload to get updated state across columns
+      toast.success('Tareas movidas exitosamente')
+    } catch (err) {
+      toast.error('Error al mover tareas')
+    }
+  }
+
+  const handleDeleteColumn = async (columnId: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar esta columna? Las tareas se perderán.')) return
+    try {
+      await deleteColumnApi(columnId)
+      setProject(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          columns: prev.columns.filter(col => col.id !== columnId)
+        }
+      })
+      toast.success('Columna eliminada')
+    } catch (err) {
+      toast.error('Error al eliminar columna')
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="kanban-loading">
@@ -152,7 +219,14 @@ export function KanbanPage() {
                     {column.name}
                     <span className="column-count">{column.tasks.length}</span>
                   </h3>
-                  <button className="column-menu-btn"><MoreHorizontal size={16} /></button>
+                  <ColumnMenu 
+                    column={column}
+                    otherColumns={boardColumns.filter(c => c.id !== column.id)}
+                    onRename={(newName) => handleRenameColumn(column.id, newName)}
+                    onClear={() => handleClearColumn(column.id)}
+                    onMoveAll={(targetId) => handleMoveAllTasks(column.id, targetId)}
+                    onDelete={() => handleDeleteColumn(column.id)}
+                  />
                 </div>
 
                 <Droppable droppableId={column.id}>
