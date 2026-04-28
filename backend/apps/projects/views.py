@@ -135,3 +135,33 @@ class ColumnViewSet(viewsets.ModelViewSet):
             "message": f"Se han movido {tasks_count} tareas a '{target_column.name}'.",
             "count": tasks_count
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def reorder_tasks(self, request, pk=None):
+        """
+        Reordena las tareas dentro de esta columna.
+        Se recibe una lista con los IDs de las tareas en el orden deseado.
+        También asigna las tareas a esta columna si venían de otra.
+        """
+        column = self.get_object()
+        task_ids = request.data.get('task_ids', [])
+        
+        if not isinstance(task_ids, list):
+            return Response({"error": "task_ids debe ser una lista."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Obtenemos las tareas que pertenecen al proyecto para seguridad
+        from apps.tasks.models import Task
+        from django.db import transaction
+
+        with transaction.atomic():
+            for idx, task_id in enumerate(task_ids):
+                try:
+                    task = Task.objects.get(id=task_id, project=column.project)
+                    task.column = column
+                    task.order = idx
+                    task.save()
+                except Task.DoesNotExist:
+                    continue
+
+        return Response({"message": "Tareas reordenadas exitosamente."}, status=status.HTTP_200_OK)
+

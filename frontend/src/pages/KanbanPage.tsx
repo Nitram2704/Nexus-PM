@@ -4,7 +4,7 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-p
 import { Loader2, Plus, User } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { getSprintsApi } from '@/api/sprints'
-import { updateTaskApi } from '@/api/tasks'
+import { createTaskApi } from '@/api/tasks'
 import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
@@ -14,7 +14,8 @@ import {
   renameColumnApi, 
   clearColumnTasksApi, 
   moveAllTasksApi, 
-  deleteColumnApi 
+  deleteColumnApi,
+  reorderTasksApi
 } from '@/api/columns'
 import { ConfirmDialog } from '@/components/kanban/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
@@ -25,6 +26,11 @@ export function KanbanPage() {
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  
+  // States for Inline Task Creation
+  const [addingTaskToColumn, setAddingTaskToColumn] = useState<string | null>(null)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
   
   // States for Actions and Confirmations
   const [busyColumnId, setBusyColumnId] = useState<string | null>(null)
@@ -61,7 +67,7 @@ export function KanbanPage() {
           schema: 'public', 
           table: 'tasks_task'
         },
-        (payload: any) => {
+        (_payload: any) => {
           // Optional: only refresh if the task belongs to this project
           // (Requires checking payload.new.project_id if available)
           loadProject()
@@ -85,6 +91,39 @@ export function KanbanPage() {
     }
   }, [projectId])
 
+  const handleCreateTask = async (columnId: string) => {
+    if (!newTaskTitle.trim() || !project || !activeSprint) return
+    setIsCreating(true)
+    try {
+      const res = await createTaskApi({
+        title: newTaskTitle.trim(),
+        project: project.id,
+        column: columnId,
+        sprint: activeSprint.id,
+        priority: 'medium',
+        type: 'task'
+      })
+      setProject(prev => {
+        if (!prev) return null
+        return {
+          ...prev,
+          columns: prev.columns.map(c => 
+            c.id === columnId 
+              ? { ...c, tasks: [...c.tasks, res.data] } 
+              : c
+          )
+        }
+      })
+      setNewTaskTitle('')
+      setAddingTaskToColumn(null)
+      toast.success('Tarea creada')
+    } catch (err) {
+      toast.error('Error al crear tarea')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   const loadProject = async () => {
     if (!projectId) return
     try {
@@ -102,7 +141,7 @@ export function KanbanPage() {
   }
 
   const onDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId } = result
+    const { destination, source } = result
 
     if (!destination) return
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
@@ -134,12 +173,17 @@ export function KanbanPage() {
 
     setProject({ ...project, columns: newColumns })
 
+    // Build the ordered list of task IDs for the destination column
+    const targetColumn = newColumns.find(c => c.id === destination.droppableId)
+    const taskIds = targetColumn ? targetColumn.tasks.map(t => t.id) : []
+
     // API Call
     try {
-      await updateTaskApi(draggableId, { column: destination.droppableId })
-      toast.success('Estado actualizado', { duration: 1500, position: 'bottom-right' })
+      await reorderTasksApi(destination.droppableId, taskIds)
+      // Opcional: silenciamos el toast para no saturar 
+      // toast.success('Orden actualizado', { duration: 1500, position: 'bottom-right' })
     } catch (err) {
-      toast.error('Error al guardar el cambio')
+      toast.error('Error al reordenar la tarea')
       loadProject() // Rollback
     }
   }
@@ -247,7 +291,17 @@ export function KanbanPage() {
           <Link to={`/project/${projectId}/backlog`} className="btn-secondary">
             Planificación
           </Link>
-          <button className="btn-primary">
+          <button 
+            className="btn-primary"
+            onClick={() => {
+              if (boardColumns.length > 0) {
+                setAddingTaskToColumn(boardColumns[0].id);
+                setNewTaskTitle('');
+              } else {
+                toast.error('No hay columnas para añadir tareas');
+              }
+            }}
+          >
             <Plus size={16} /> Nuevo Ítem
           </button>
         </div>
@@ -341,9 +395,62 @@ export function KanbanPage() {
                         </Draggable>
                       ))}
                       {provided.placeholder}
+
+                      {addingTaskToColumn === column.id && (
+                        <div className="add-task-inline">
+                          <input
+                            autoFocus
+                            type="text"
+                            placeholder="¿Qué hay que hacer?"
+                            value={newTaskTitle}
+                            onChange={e => setNewTaskTitle(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleCreateTask(column.id)
+                              if (e.key === 'Escape') {
+                                setAddingTaskToColumn(null)
+                                setNewTaskTitle('')
+                              }
+                            }}
+                            disabled={isCreating}
+                            className="add-task-input"
+                          />
+                          <div className="add-task-actions">
+                            <button 
+                              className="btn-primary btn-sm"
+                              onClick={() => handleCreateTask(column.id)}
+                              disabled={isCreating || !newTaskTitle.trim()}
+                            >
+                              {isCreating ? 'Guardando...' : 'Añadir'}
+                            </button>
+                            <button 
+                              className="btn-icon"
+                              onClick={() => {
+                                setAddingTaskToColumn(null)
+                                setNewTaskTitle('')
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </Droppable>
+
+                {addingTaskToColumn !== column.id && (
+                  <div className="column-footer">
+                    <button 
+                      className="btn-add-inline"
+                      onClick={() => {
+                        setAddingTaskToColumn(column.id)
+                        setNewTaskTitle('')
+                      }}
+                    >
+                      <Plus size={16} /> Añadir tarea
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -415,6 +522,20 @@ export function KanbanPage() {
         .no-active-sprint-warning h3 { font-size: 1.5rem; color: var(--color-text-primary); margin-bottom: 8px; }
         .btn-primary { background: var(--color-accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
         .mt-4 { margin-top: 1rem; }
+        
+        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-sm { padding: 4px 12px; font-size: 0.75rem; }
+        .btn-icon { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; }
+        .btn-icon:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+        
+        .add-task-inline { padding: 8px; background: var(--color-surface-2); border-radius: 8px; border: 1px solid var(--color-accent); margin-top: 8px; }
+        .add-task-input { width: 100%; border: none; background: transparent; color: var(--color-text-primary); font-size: 0.875rem; padding: 4px 0; margin-bottom: 8px; outline: none; }
+        .add-task-input::placeholder { color: var(--color-text-muted); }
+        .add-task-actions { display: flex; align-items: center; justify-content: space-between; }
+        
+        .column-footer { padding: 8px 16px 16px; }
+        .btn-add-inline { width: 100%; background: transparent; border: none; color: var(--color-text-muted); font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .btn-add-inline:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
       `}</style>
     </div>
   )

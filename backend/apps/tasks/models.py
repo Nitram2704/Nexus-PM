@@ -93,8 +93,10 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    order = models.PositiveIntegerField(default=0)
+
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['order', '-created_at']
 
     def __str__(self):
         return f"[{self.key}] {self.title}"
