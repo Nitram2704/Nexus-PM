@@ -8,6 +8,7 @@ import { createTaskApi } from '@/api/tasks'
 import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
+import { useProjectStore } from '@/store/projectStore'
 import { TaskDetailDrawer } from '@/components/kanban/TaskDetailDrawer'
 import { ColumnMenu } from '@/components/kanban/ColumnMenu'
 import { 
@@ -22,6 +23,7 @@ import { supabase } from '@/lib/supabase'
 
 export function KanbanPage() {
   const { projectId } = useParams<{ projectId: string }>()
+  const setActiveProject = useProjectStore((s) => s.setActiveProject)
   const [project, setProject] = useState<Project | null>(null)
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -132,6 +134,7 @@ export function KanbanPage() {
         getSprintsApi(projectId)
       ])
       setProject(projRes.data)
+      setActiveProject(projRes.data) // Share with Navbar via global store
       setSprints(sprintRes.data)
     } catch (err) {
       toast.error('Error al cargar el tablero')
@@ -139,6 +142,9 @@ export function KanbanPage() {
       setIsLoading(false)
     }
   }
+
+  // Cleanup project from store on unmount
+  useEffect(() => () => { setActiveProject(null) }, [])
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source } = result
@@ -288,9 +294,6 @@ export function KanbanPage() {
           )}
         </div>
         <div className="kanban-header-actions">
-          <Link to={`/project/${projectId}/backlog`} className="btn-secondary">
-            Planificación
-          </Link>
           <button 
             className="btn-primary"
             onClick={() => {
