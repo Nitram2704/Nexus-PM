@@ -117,7 +117,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, projectName, onS
                 <div className="flex flex-col gap-6">
                     <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-400 font-medium">
-                            {proposal.data.length} tareas sugeridas
+                            Propuesta organizada por módulos
                         </span>
                         <button 
                             className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-semibold"
@@ -127,24 +127,37 @@ export function AISuggestionModal({ isOpen, onClose, projectId, projectName, onS
                         </button>
                     </div>
 
-                    <div className="max-h-[400px] overflow-y-auto pr-2 flex flex-col gap-2">
-                        {proposal.data.map((item, index) => (
-                            <div 
-                                key={index} 
-                                className={`suggestion-card ${selectedIndices.has(index) ? 'active' : ''}`}
-                                onClick={() => toggleSelect(index)}
-                            >
-                                <div className="flex gap-3">
-                                    <div className={`checkbox ${selectedIndices.has(index) ? 'checked' : ''}`}>
-                                        {selectedIndices.has(index) && <Check size={12} strokeWidth={3} />}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <h5 className="text-sm font-semibold text-white">{item.title}</h5>
-                                            <span className={`priority-pill ${item.priority}`}>{item.priority}</span>
-                                        </div>
-                                        <p className="text-xs text-slate-400 mt-1">{item.description}</p>
-                                    </div>
+                    <div className="max-h-[450px] overflow-y-auto pr-2 flex flex-col gap-6">
+                        {proposal.data.map((epic: any, eIdx: number) => (
+                            <div key={eIdx} className="flex flex-col gap-3">
+                                <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+                                    <Layout size={14} className="text-blue-400" />
+                                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">{epic.epic}</h4>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {epic.items.map((item: any, iIdx: number) => {
+                                        const key = `${eIdx}-${iIdx}`
+                                        return (
+                                            <div 
+                                                key={key} 
+                                                className={`suggestion-card ${selectedIndices.has(key) ? 'active' : ''}`}
+                                                onClick={() => toggleSelect(key)}
+                                            >
+                                                <div className="flex gap-3">
+                                                    <div className={`checkbox ${selectedIndices.has(key) ? 'checked' : ''}`}>
+                                                        {selectedIndices.has(key) && <Check size={12} strokeWidth={3} />}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <h5 className="text-sm font-semibold text-white">{item.title}</h5>
+                                                            <span className={`priority-pill ${item.priority}`}>{item.priority}</span>
+                                                        </div>
+                                                        <p className="text-xs text-slate-400 mt-1">{item.description}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
                             </div>
                         ))}
@@ -152,7 +165,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, projectName, onS
 
                     <div className="flex items-center justify-between pt-4 border-t border-slate-800">
                         <span className="text-xs text-slate-400">
-                            {selectedIndices.size} seleccionadas
+                            {selectedIndices.size} ítems seleccionados
                         </span>
                         <div className="flex gap-3">
                             <button className="btn-ghost" onClick={onClose} disabled={isImporting}>

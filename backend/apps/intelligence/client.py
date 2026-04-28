@@ -5,7 +5,7 @@ from django.conf import settings
 class BacklogAIClient:
     """
     Cliente para interactuar con la IA (Claude) y generar propuestas de backlog.
-    Incluye un modo 'Mock' para desarrollo sin API Key.
+    Organiza los ítems por módulo/épica.
     """
     
     def __init__(self):
@@ -19,30 +19,49 @@ class BacklogAIClient:
         return self._call_ai_api(project_description)
 
     def _call_ai_api(self, project_description):
-        # Aquí iría la integración real con Anthropic/Claude
-        # Por ahora, si no hay API key, usamos el mock
+        # En producción aquí llamaríamos a Anthropic
         return self._get_mock_backlog(project_description)
 
     def _get_mock_backlog(self, description):
         """
-        Devuelve un backlog de prueba basado en palabras clave de la descripción.
+        Devuelve un backlog organizado por épicas.
         """
         desc_lower = description.lower()
         
-        if "ecommerce" in desc_lower or "tienda" in desc_lower or "carrito" in desc_lower:
+        if "ecommerce" in desc_lower or "tienda" in desc_lower:
             return [
-                {"title": "Configurar catálogo de productos", "description": "Definir modelos de datos para productos y categorías.", "type": "feature", "priority": "high"},
-                {"title": "Implementar carrito de compras", "description": "Lógica para agregar, quitar y actualizar cantidades.", "type": "feature", "priority": "high"},
-                {"title": "Integrar pasarela de pagos (Stripe)", "description": "Configurar webhooks y procesamiento de pagos seguros.", "type": "feature", "priority": "high"},
-                {"title": "Diseñar flujo de checkout", "description": "Interfaz de usuario para dirección de envío y confirmación.", "type": "story", "priority": "medium"},
-                {"title": "Historial de pedidos", "description": "Vista para que el usuario consulte sus compras anteriores.", "type": "feature", "priority": "low"},
+                {
+                    "epic": "Módulo: Catálogo y Productos",
+                    "items": [
+                        {"title": "Definir modelos de productos", "description": "Atributos, categorías y variantes.", "type": "task", "priority": "high"},
+                        {"title": "CRUD de productos para Admin", "description": "Interfaz para gestionar el inventario.", "type": "feature", "priority": "high"},
+                        {"title": "Buscador de productos", "description": "Búsqueda por nombre y filtros por categoría.", "type": "feature", "priority": "medium"}
+                    ]
+                },
+                {
+                    "epic": "Módulo: Ventas y Checkout",
+                    "items": [
+                        {"title": "Carrito de compras persistente", "description": "Almacenamiento en LocalStorage o DB.", "type": "feature", "priority": "high"},
+                        {"title": "Integración con Stripe/PayPal", "description": "Procesamiento de pagos seguro.", "type": "feature", "priority": "high"},
+                        {"title": "Generación de facturas PDF", "description": "Envío automático al completar compra.", "type": "task", "priority": "low"}
+                    ]
+                }
             ]
         
-        # Default mock backlog
+        # Default mock backlog (Software SaaS general)
         return [
-            {"title": "Configurar entorno de desarrollo", "description": "Instalar dependencias y configurar variables de entorno.", "type": "task", "priority": "high"},
-            {"title": "Diseñar arquitectura de base de datos", "description": "Definir esquemas y relaciones principales.", "type": "feature", "priority": "high"},
-            {"title": "Implementar autenticación de usuarios", "description": "Login, registro y recuperación de contraseña.", "type": "feature", "priority": "high"},
-            {"title": "Crear dashboard principal", "description": "Vista resumen con las métricas clave del sistema.", "type": "feature", "priority": "medium"},
-            {"title": "Documentación de API", "description": "Generar Swagger o Redoc para los endpoints.", "type": "task", "priority": "low"},
+            {
+                "epic": "Módulo: Autenticación",
+                "items": [
+                    {"title": "Registro con validación de email", "description": "Asegurar que el correo sea válido.", "type": "feature", "priority": "high"},
+                    {"title": "OAuth con Google/Github", "description": "Login social para mayor conversión.", "type": "feature", "priority": "medium"}
+                ]
+            },
+            {
+                "epic": "Módulo: Core / Gestión",
+                "items": [
+                    {"title": "Dashboard de métricas", "description": "Gráficos resumen del estado del sistema.", "type": "story", "priority": "high"},
+                    {"title": "Exportación de reportes (Excel/CSV)", "description": "Permitir descarga de datos históricos.", "type": "task", "priority": "medium"}
+                ]
+            }
         ]

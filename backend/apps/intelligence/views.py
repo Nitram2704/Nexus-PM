@@ -52,22 +52,29 @@ class ImportProposalView(views.APIView):
         if proposal.is_imported:
             return response.Response({"error": "Esta propuesta ya fue importada."}, status=status.HTTP_400_BAD_REQUEST)
         
-        selected_indices = request.data.get('selected_indices', [])
+        # Format of selected_indices: ["epicIdx-itemIdx", ...]
+        selected_keys = request.data.get('selected_indices', [])
         tasks_created = 0
         
-        for idx in selected_indices:
-            if idx < len(proposal.data):
-                item = proposal.data[idx]
-                Task.objects.create(
-                    project=proposal.project,
-                    title=item['title'],
-                    description=item['description'],
-                    type=item['type'],
-                    priority=item['priority'],
-                    creator=request.user,
-                    column=proposal.project.columns.first() # Por defecto a la primera columna
-                )
-                tasks_created += 1
+        for key in selected_keys:
+            try:
+                e_idx, i_idx = map(int, key.split('-'))
+                if e_idx < len(proposal.data):
+                    epic = proposal.data[e_idx]
+                    if i_idx < len(epic['items']):
+                        item = epic['items'][i_idx]
+                        Task.objects.create(
+                            project=proposal.project,
+                            title=item['title'],
+                            description=f"[{epic['epic']}] {item['description']}",
+                            type=item['type'],
+                            priority=item['priority'],
+                            creator=request.user,
+                            column=proposal.project.columns.first()
+                        )
+                        tasks_created += 1
+            except (ValueError, KeyError, IndexError):
+                continue
         
         proposal.is_imported = True
         proposal.save()
