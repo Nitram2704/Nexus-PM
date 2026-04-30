@@ -18,9 +18,55 @@ class BacklogAIClient:
         
         return self._call_ai_api(project_description)
 
+    def generate_user_stories(self, requirement):
+        """
+        Genera historias de usuario detalladas a partir de un requerimiento.
+        """
+        if self.is_mock:
+            return self._get_mock_stories(requirement)
+        
+        return self._call_ai_api_for_stories(requirement)
+
     def _call_ai_api(self, project_description):
         # En producción aquí llamaríamos a Anthropic
         return self._get_mock_backlog(project_description)
+
+    def _call_ai_api_for_stories(self, requirement):
+        # En producción aquí llamaríamos a Anthropic con un prompt de US
+        return self._get_mock_stories(requirement)
+
+    def _get_mock_stories(self, requirement):
+        """
+        Devuelve historias de usuario mockeadas con formato Como/Quiero/Para.
+        """
+        return [
+            {
+                "role": "Usuario",
+                "action": "iniciar sesión con Google",
+                "benefit": "no tener que recordar otra contraseña",
+                "title": "Autenticación con Google",
+                "acceptance_criteria": [
+                    "El botón de Google debe ser visible en la pantalla de login.",
+                    "Al hacer clic, debe redirigir a la cuenta de Google.",
+                    "Si el usuario no existe, debe crearse automáticamente."
+                ],
+                "priority": "high",
+                "type": "story"
+            },
+            {
+                "role": "Usuario",
+                "action": "recibir notificaciones push",
+                "benefit": "enterarme al instante de cambios en mis tareas",
+                "title": "Notificaciones en tiempo real",
+                "acceptance_criteria": [
+                    "Pedir permiso al usuario al entrar por primera vez.",
+                    "Enviar notificación cuando se me asigne una tarea.",
+                    "Enviar notificación cuando una tarea cambie de estado."
+                ],
+                "priority": "medium",
+                "type": "story"
+            }
+        ]
 
     def _get_mock_backlog(self, description):
         """
