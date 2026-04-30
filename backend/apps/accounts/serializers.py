@@ -62,3 +62,21 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
         return attrs
+
+
+class DashboardTaskSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    priority = serializers.CharField()
+    project_name = serializers.CharField(source='project.name')
+    project_id = serializers.UUIDField(source='project.id')
+    key = serializers.SerializerMethodField()
+
+    def get_key(self, obj):
+        return f"{obj.project.key}-{obj.local_id}"
+
+
+class DashboardSummarySerializer(serializers.Serializer):
+    total_tasks = serializers.IntegerField()
+    pending_tasks = serializers.IntegerField()
+    completed_tasks = serializers.IntegerField()
