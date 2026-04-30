@@ -86,7 +86,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         active_sprint = Sprint.objects.filter(project=project, status='active').first()
         burndown_data = []
         
-        if active_sprint:
+        if active_sprint and active_sprint.start_date and active_sprint.end_date:
             total_points = Task.objects.filter(sprint=active_sprint).aggregate(total=Sum('story_points'))['total'] or 0
             
             # Generar puntos por día

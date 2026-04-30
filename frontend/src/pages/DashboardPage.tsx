@@ -43,11 +43,11 @@ export function DashboardPage() {
           {/* POSICIÓN INTERMEDIA FORZADA CON PIXELES */}
           <div style={{ marginTop: '280px' }}>
              <div className="px-6 mb-8 text-[11px] font-black uppercase tracking-[0.5em] text-slate-800">Estado Local</div>
-             <div className="card-premium p-10 space-y-12 bg-white/[0.005]">
+             <div className="card-premium p-10 space-y-12 bg-white/0.5">
                 <StatRow label="Asignadas" value={data?.stats.total_assigned || 0} icon={<Briefcase className="w-4 h-4 text-blue-500" />} />
-                <div className="h-px bg-white/[0.02]" />
+                <div className="h-px bg-white/2" />
                 <StatRow label="Pendientes" value={data?.stats.pending || 0} icon={<Clock className="w-4 h-4 text-slate-500" />} />
-                <div className="h-px bg-white/[0.02]" />
+                <div className="h-px bg-white/2" />
                 <StatRow label="Terminadas" value={data?.stats.completed || 0} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} />
              </div>
           </div>
@@ -60,16 +60,16 @@ export function DashboardPage() {
              <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500">Operaciones</h2>
            </div>
 
-           <div className="card-premium min-h-[850px] flex flex-col bg-white/[0.005]">
+           <div className="card-premium min-h-[750px] flex flex-col bg-white/0.5">
               {data?.tasks && data.tasks.length > 0 ? (
-                <div className="divide-y divide-white/[0.02]">
+                <div className="divide-y divide-white/2">
                    {data.tasks.map((task: any) => (
                      <WorkItem key={task.id} task={task} />
                    ))}
                 </div>
               ) : (
-                <div className="flex-1 flex flex-col items-center justify-center p-32 text-center gap-12">
-                   <div className="w-24 h-24 rounded-full bg-slate-900 border border-white/[0.02] flex items-center justify-center">
+                <div className="flex-1 flex flex-col items-center justify-center p-20 text-center gap-8">
+                   <div className="w-20 h-20 rounded-full bg-slate-900 border border-white/2 flex items-center justify-center">
                       <Rocket className="w-10 h-10 text-slate-800" />
                    </div>
                    <div className="space-y-2">
@@ -95,9 +95,9 @@ export function DashboardPage() {
               </div>
            </section>
 
-           {/* POSICIÓN INTERMEDIA FORZADA CON PIXELES */}
+           {/* INSIGHTS: POSICIÓN MEDIA FIJA (mt-32) */}
            <section style={{ marginTop: '280px' }}>
-              <div className="card-premium p-12 bg-blue-500/[0.01] border-blue-500/[0.04]">
+              <div className="card-premium p-12 bg-blue-500/1 border-blue-500/4">
                  <div className="flex flex-col gap-10">
                     <div className="flex items-center gap-5 text-blue-500/60">
                        <AlertTriangle className="w-6 h-6" />
@@ -120,12 +120,12 @@ function StatRow({ label, value, icon }: any) {
   return (
     <div className="flex items-center justify-between py-2 px-2">
       <div className="flex items-center gap-8">
-        <div className="p-4 rounded-xl bg-white/[0.02]">
+        <div className="p-3 rounded-lg bg-white/2">
           {icon}
         </div>
         <span className="text-[11px] font-bold uppercase tracking-[0.4em] text-slate-700">{label}</span>
       </div>
-      <span className="text-5xl font-black text-white tracking-[0.1em] tabular-nums">{value}</span>
+      <span className="text-5xl font-black text-white tracking-widest tabular-nums">{value}</span>
     </div>
   )
 }
@@ -134,7 +134,7 @@ function WorkItem({ task }: any) {
   return (
     <Link 
       to={`/project/${task.project_id}/kanban`}
-      className="flex group items-center justify-between p-14 hover:bg-white/[0.015] transition-all border-l-4 border-transparent hover:border-blue-500/40"
+      className="flex group items-center justify-between p-10 hover:bg-white/1.5 transition-all border-l-2 border-transparent hover:border-blue-500/20"
     >
       <div className="flex items-center gap-14">
         <div className={`w-2 h-16 rounded-full ${

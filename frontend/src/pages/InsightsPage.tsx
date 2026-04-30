@@ -1,170 +1,126 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar
 } from 'recharts'
-import { TrendingDown, Users, PieChart as PieIcon, Loader2, AlertCircle } from 'lucide-react'
+import { 
+  Loader2, ShieldCheck, Activity,
+  Users, PieChart as PieIcon, TrendingUp
+} from 'lucide-react'
 import { getProjectAnalyticsApi } from '@/api/projects'
 
-const COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899']
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export default function InsightsPage() {
   const { projectId } = useParams<{ projectId: string }>()
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['project-analytics', projectId],
     queryFn: () => getProjectAnalyticsApi(projectId!).then(res => res.data),
     enabled: !!projectId
   })
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400">
-        <Loader2 className="w-10 h-10 animate-spin mb-4 text-blue-500" />
-        <p className="text-lg font-medium">Cargando métricas del proyecto...</p>
-      </div>
-    )
-  }
+  if (isLoading) return <div className="h-[80vh] flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" /></div>
 
-  if (error || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-slate-400 p-6">
-        <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
-        <h2 className="text-xl font-semibold text-slate-200 mb-2">Error al cargar datos</h2>
-        <p>No pudimos obtener las analíticas. Verifica tu conexión o intenta más tarde.</p>
-      </div>
-    )
-  }
-
-  const priorityData = Object.entries(data.priorities).map(([name, value]) => ({ name, value }))
+  const priorityData = Object.entries(data?.priorities || {}).map(([name, value]) => ({ name, value }))
+  const hasBurndown = data?.burndown && data.burndown.length > 0
 
   return (
-    <div className="p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold text-white tracking-tight">Project Insights</h1>
-        <p className="text-slate-400">Analíticas detalladas y rendimiento del equipo para {data.sprint_name || 'el proyecto'}.</p>
+    <div className="h-[calc(100vh-130px)] overflow-hidden flex flex-col px-[10px] pt-[10px] pb-[10px] gap-6 bg-[#020203] text-slate-500 select-none animate-in fade-in duration-700">
+      
+      {/* HEADER: AÑADIMOS PADDING DE 10PX */}
+      <header className="flex items-center justify-between shrink-0 mb-2 px-[10px]">
+        <div className="flex items-center gap-6">
+           <h1 className="text-3xl font-black text-white tracking-tighter">Insights<span className="text-blue-500">.</span></h1>
+           <div className="h-4 w-px bg-white/10" />
+           <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-600">
+             {data?.sprint_name || 'Workflow Analytics'}
+           </span>
+        </div>
+        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5">
+           <ShieldCheck className="w-3 h-3 text-blue-500" />
+           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Active Intelligence</span>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Burndown Chart */}
-        <section className="bg-[#1a2235] rounded-xl border border-[#2a3655] p-6 shadow-xl relative overflow-hidden group">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-blue-500/10 rounded-lg">
-              <TrendingDown className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100">Sprint Burndown</h2>
-              <p className="text-xs text-slate-500">Puntos restantes vs. Ideal</p>
-            </div>
-          </div>
-          
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              {data.burndown.length > 0 ? (
-                <AreaChart data={data.burndown}>
-                  <defs>
-                    <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a3655" vertical={false} />
-                  <XAxis dataKey="date" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1a2235', border: '1px solid #2a3655', borderRadius: '8px' }}
-                    itemStyle={{ fontSize: '12px' }}
-                  />
-                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                  <Area type="monotone" dataKey="actual" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorActual)" name="Real" />
-                  <Line type="monotone" dataKey="ideal" stroke="#94a3b8" strokeDasharray="5 5" dot={false} strokeWidth={2} name="Ideal" />
-                </AreaChart>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500 italic">
-                  No hay un sprint activo con tareas estimadas.
-                </div>
-              )}
-            </ResponsiveContainer>
-          </div>
-        </section>
+      {/* DASHBOARD: PADDING INTERNO DE 10PX EN LAS TARJETAS ABAJO TAMBIÉN */}
+      <div className="flex-1 min-h-0 grid grid-rows-2 gap-[10px] px-[10px]">
+        
+        {/* ROW 1: CORE METRICS */}
+        <div className="grid grid-cols-12 gap-[10px] min-h-0">
+           <section className="col-span-9 card-premium p-[10px] bg-white/[0.015] flex flex-col min-h-0 border-white/[0.03]">
+              <div className="flex items-center justify-between mb-2 shrink-0 px-[10px]">
+                 <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] flex items-center gap-3">
+                   <Activity className="w-3 h-3 text-blue-500" /> Velocity Burn Rhythm
+                 </h2>
+              </div>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  {hasBurndown ? (
+                    <AreaChart data={data.burndown} margin={{ bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff02" vertical={false} />
+                      <Tooltip contentStyle={{ background: '#000', border: 'none', borderRadius: '4px', fontSize: '9px' }} />
+                      <Area type="monotone" dataKey="actual" stroke="#3b82f6" strokeWidth={2} fill="url(#colorBlue)" />
+                      <defs>
+                        <linearGradient id="colorBlue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                    </AreaChart>
+                  ) : (
+                    <div className="h-full flex items-center justify-center opacity-5"><TrendingUp className="w-8 h-8" /></div>
+                  )}
+                </ResponsiveContainer>
+              </div>
+           </section>
 
-        {/* Priority Distribution */}
-        <section className="bg-[#1a2235] rounded-xl border border-[#2a3655] p-6 shadow-xl group">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-amber-500/10 rounded-lg">
-              <PieIcon className="w-5 h-5 text-amber-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100">Distribución de Prioridades</h2>
-              <p className="text-xs text-slate-500">Balance del backlog por criticidad</p>
-            </div>
-          </div>
+           <section className="col-span-3 card-premium p-[10px] bg-white/[0.015] flex flex-col min-h-0 border-white/[0.03]">
+              <h2 className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-4 shrink-0 flex items-center gap-3 px-[10px]">
+                <PieIcon className="w-3 h-3 opacity-20 text-amber-500" /> Integrity
+              </h2>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={priorityData} innerRadius="65%" outerRadius="90%" paddingAngle={3} dataKey="value" stroke="none">
+                      {priorityData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} opacity={0.3} />)}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+           </section>
+        </div>
 
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              {priorityData.length > 0 ? (
-                <PieChart>
-                  <Pie
-                    data={priorityData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {priorityData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1a2235', border: '1px solid #2a3655', borderRadius: '8px' }}
-                  />
-                </PieChart>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500 italic">
-                  No hay tareas registradas en este proyecto.
-                </div>
-              )}
-            </ResponsiveContainer>
-          </div>
-        </section>
+        {/* ROW 2: TEAM OPS */}
+        <div className="grid grid-cols-12 gap-[10px] min-h-0">
+           <section className="col-span-9 card-premium p-[10px] bg-white/[0.015] flex flex-col min-h-0 border-blue-500/5">
+              <h2 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.4em] mb-4 shrink-0 flex items-center gap-3 px-[10px]">
+                <Users className="w-3 h-3 text-emerald-500" /> Team Equilibrium
+              </h2>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={data?.workload || []} margin={{ bottom: 25 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff03" vertical={false} />
+                      <XAxis dataKey="name" stroke="#ffffff20" fontSize={9} tickLine={false} axisLine={false} dy={10} />
+                      <Bar dataKey="tasks" fill="#3b82f6" radius={[3, 3, 0, 0]} barSize={45} opacity={0.7} />
+                   </BarChart>
+                </ResponsiveContainer>
+              </div>
+           </section>
 
-        {/* Team Workload */}
-        <section className="bg-[#1a2235] rounded-xl border border-[#2a3655] p-6 shadow-xl lg:col-span-2 group">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-2 bg-emerald-500/10 rounded-lg">
-              <Users className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100">Carga de Trabajo del Equipo</h2>
-              <p className="text-xs text-slate-500">Número de tareas asignadas por miembro</p>
-            </div>
-          </div>
+           <div className="col-span-3 card-premium p-[10px] bg-rose-500/[0.02] border-rose-500/10 flex flex-col justify-center">
+              <div className="px-[10px]">
+                 <div className="flex items-center gap-2 text-rose-500 mb-3 font-black uppercase text-[8px] tracking-[0.2em]">Risk Sentinel</div>
+                 <p className="text-sm text-slate-200 font-bold leading-tight uppercase tracking-tight">Active anomalies detected.</p>
+                 <div className="mt-6 flex items-center gap-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    <button className="text-[8px] font-black uppercase text-rose-400/60 tracking-widest hover:text-rose-400 transition-colors">Start Audit Logic →</button>
+                 </div>
+              </div>
+           </div>
+        </div>
 
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              {data.workload.length > 0 ? (
-                <BarChart data={data.workload}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a3655" vertical={false} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                  <Tooltip 
-                    cursor={{ fill: '#ffffff05' }}
-                    contentStyle={{ backgroundColor: '#1a2235', border: '1px solid #2a3655', borderRadius: '8px' }}
-                  />
-                  <Bar dataKey="tasks" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} name="Tareas" />
-                </BarChart>
-              ) : (
-                <div className="flex items-center justify-center h-full text-slate-500 italic">
-                  No hay miembros con tareas asignadas.
-                </div>
-              )}
-            </ResponsiveContainer>
-          </div>
-        </section>
       </div>
     </div>
   )
