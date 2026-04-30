@@ -9,9 +9,11 @@ import { getTasksApi, createTaskApi, updateTaskApi } from '@/api/tasks'
 import { AISuggestionModal } from '@/components/kanban/AISuggestionModal'
 import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
+import { useProjectStore } from '@/store/projectStore'
 
 export function BacklogPage() {
   const { projectId } = useParams<{ projectId: string }>()
+  const setActiveProject = useProjectStore((s) => s.setActiveProject)
   const [project, setProject] = useState<Project | null>(null)
   const [sprints, setSprints] = useState<Sprint[]>([])
   const [backlogTasks, setBacklogTasks] = useState<Task[]>([])
@@ -30,6 +32,9 @@ export function BacklogPage() {
     }
   }, [projectId])
 
+  // Cleanup project from store on unmount
+  useEffect(() => () => { setActiveProject(null) }, [])
+
   const loadData = async () => {
     if (!projectId) return
     setIsLoading(true)
@@ -41,6 +46,7 @@ export function BacklogPage() {
       ])
 
       setProject(projRes.data)
+      setActiveProject(projRes.data) // Share with Navbar via global store
       setSprints(sprintRes.data)
       
       const backlog: Task[] = []

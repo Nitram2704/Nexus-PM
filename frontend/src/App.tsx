@@ -9,6 +9,7 @@ import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { KanbanPage } from '@/pages/KanbanPage'
 import { BacklogPage } from '@/pages/BacklogPage'
+import { MainLayout } from '@/components/layout/MainLayout'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,9 +32,11 @@ function App() {
 
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/project/:projectId/kanban" element={<KanbanPage />} />
-            <Route path="/project/:projectId/backlog" element={<BacklogPage />} />
+            <Route element={<MainLayout />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/project/:projectId/kanban" element={<KanbanPage />} />
+              <Route path="/project/:projectId/backlog" element={<BacklogPage />} />
+            </Route>
           </Route>
 
           {/* Default redirect */}

@@ -1,38 +1,12 @@
-import { useNavigate, Link } from 'react-router-dom'
-import { LogOut, LayoutDashboard } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { LayoutDashboard } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 
 export function DashboardPage() {
-  const navigate = useNavigate()
-  const { user, logout } = useAuthStore()
-
-  const handleLogout = () => {
-    logout()
-    navigate('/login', { replace: true })
-  }
+  const { user } = useAuthStore()
 
   return (
     <div className="dashboard-shell">
-      {/* Top bar */}
-      <header className="dash-header">
-        <div className="dash-logo">
-          <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
-            <rect width="40" height="40" rx="12" fill="#3b82f6" fillOpacity="0.15" />
-            <path d="M10 28L20 12L30 28" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="20" cy="20" r="3" fill="#3b82f6" />
-          </svg>
-          <span className="dash-logo-text">Nexus PM</span>
-        </div>
-
-        <div className="dash-user">
-          <span className="dash-user-name">{user?.full_name || user?.email}</span>
-          <button id="logout-btn" className="dash-logout-btn" onClick={handleLogout}>
-            <LogOut size={16} />
-            Cerrar sesión
-          </button>
-        </div>
-      </header>
-
       {/* Main content */}
       <main className="dash-main">
         <div className="dash-welcome">
@@ -44,7 +18,7 @@ export function DashboardPage() {
             Tu sesión está activa. El dashboard de proyectos llegará en la Phase 2.
           </p>
           <div className="flex gap-4 mt-4">
-            <Link to="/project/a8f1ecc2-3968-492f-a234-aef8714c2f32/kanban" className="btn-primary no-underline px-6">
+            <Link to="/project/3063e722-13f3-4e76-802a-bd3f80388a6e/kanban" className="btn-primary no-underline px-6">
               Ver Proyecto NEX (Demo)
             </Link>
           </div>
