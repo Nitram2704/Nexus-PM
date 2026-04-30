@@ -1,4 +1,4 @@
-import api from './auth'
+import apiClient from '@/lib/apiClient'
 
 export interface DashboardStats {
   total_assigned: number
@@ -28,4 +28,4 @@ export interface DashboardData {
   stats: DashboardStats
 }
 
-export const getDashboardDataApi = () => api.get<DashboardData>('/accounts/dashboard/')
+export const getDashboardDataApi = () => apiClient.get<DashboardData>('/auth/dashboard/')

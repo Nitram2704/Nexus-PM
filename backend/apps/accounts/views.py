@@ -181,7 +181,8 @@ class UserDashboardView(APIView):
 
     def get(self, request):
         from apps.tasks.models import Task
-        from apps.projects.models import Member
+        from apps.projects.models import Project, Member
+        from django.db.models import Q
         
         user = request.user
         
@@ -191,8 +192,10 @@ class UserDashboardView(APIView):
             column__is_done_column=False
         ).select_related('project', 'column').order_by('-priority', '-updated_at')[:10]
         
-        # 2. Recent projects
-        memberships = Member.objects.filter(user=user).select_related('project').order_by('-joined_at')[:6]
+        # 2. Recent projects (Owned or Member)
+        projects = Project.objects.filter(
+            Q(owner=user) | Q(members__user=user)
+        ).distinct().order_by('-updated_at')[:6]
         
         # 3. Stats
         total_assigned = Task.objects.filter(assignee=user).count()
@@ -204,11 +207,11 @@ class UserDashboardView(APIView):
             "tasks": DashboardTaskSerializer(assigned_tasks, many=True).data,
             "projects": [
                 {
-                    "id": m.project.id,
-                    "name": m.project.name,
-                    "key": m.project.key,
-                    "role": m.role
-                } for m in memberships
+                    "id": p.id,
+                    "name": p.name,
+                    "key": p.key,
+                    "role": "owner" if p.owner == user else "member"
+                } for p in projects
             ],
             "stats": {
                 "total_assigned": total_assigned,
