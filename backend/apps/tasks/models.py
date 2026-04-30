@@ -67,6 +67,7 @@ class Task(models.Model):
     
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='task')
     priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    acceptance_criteria = models.JSONField(default=list, blank=True)
     
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL, 

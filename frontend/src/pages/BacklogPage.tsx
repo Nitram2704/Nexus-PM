@@ -200,7 +200,6 @@ export function BacklogPage() {
         isOpen={isAIModalOpen}
         onClose={() => setIsAIModalOpen(false)}
         projectId={projectId!}
-        projectName={project?.name || 'Nuevo Proyecto'}
         onSuccess={loadData}
       />
 
