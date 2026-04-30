@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, Loader2, Check, Plus, AlertCircle, Zap, RefreshCcw } from 'lucide-react'
+import { Sparkles, Loader2, Check, Plus, Layout, Zap, RefreshCcw } from 'lucide-react'
 import { Modal } from '../Modal'
 import { generateBacklogApi, importProposalApi, type AIProposal } from '@/api/ai'
 import toast from 'react-hot-toast'
@@ -8,15 +8,14 @@ interface AISuggestionModalProps {
   isOpen: boolean
   onClose: () => void
   projectId: string
-  projectName: string
   onSuccess: () => void
 }
 
-export function AISuggestionModal({ isOpen, onClose, projectId, projectName, onSuccess }: AISuggestionModalProps) {
+export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AISuggestionModalProps) {
     const [description, setDescription] = useState('')
     const [step, setStep] = useState<'input' | 'thinking' | 'results'>('input')
     const [proposal, setProposal] = useState<AIProposal | null>(null)
-    const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set())
+    const [selectedIndices, setSelectedIndices] = useState<Set<string>>(new Set())
     const [isImporting, setIsImporting] = useState(false)
 
     const handleGenerate = async () => {
@@ -29,7 +28,16 @@ export function AISuggestionModal({ isOpen, onClose, projectId, projectName, onS
         try {
             const data = await generateBacklogApi(projectId, description)
             setProposal(data)
-            setSelectedIndices(new Set(data.data.map((_, i) => i))) // Seleccionar todos por defecto
+            
+            // Seleccionar todos por defecto usando el formato eIdx-iIdx
+            const initial = new Set<string>()
+            data.data.forEach((epic: any, eIdx: number) => {
+                epic.items.forEach((_: any, iIdx: number) => {
+                    initial.add(`${eIdx}-${iIdx}`)
+                })
+            })
+            setSelectedIndices(initial)
+            
             setStep('results')
         } catch (err) {
             toast.error('Error al generar el backlog. Intenta de nuevo.')
@@ -37,7 +45,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, projectName, onS
         }
     }
 
-    const toggleSelect = (index: number) => {
+    const toggleSelect = (index: string) => {
         const newSet = new Set(selectedIndices)
         if (newSet.has(index)) newSet.delete(index)
         else newSet.add(index)

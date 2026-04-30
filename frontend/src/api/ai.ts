@@ -20,7 +20,7 @@ export const generateBacklogApi = async (projectId: string, description: string)
     return response.data
 }
 
-export const importProposalApi = async (projectId: string, proposalId: string, selectedIndices: number[]) => {
+export const importProposalApi = async (projectId: string, proposalId: string, selectedIndices: string[]) => {
     const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/import-proposal/${proposalId}/`, { 
         selected_indices: selectedIndices 
     })
