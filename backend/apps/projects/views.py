@@ -2,8 +2,10 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import Project, Member, Column
 from .serializers import (
@@ -52,9 +54,75 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy', 'invite']:
             return [IsAuthenticated(), IsProjectOwnerOrAdmin()]
-        if self.action in ['retrieve']:
+        if self.action in ['retrieve', 'analytics']:
             return [IsAuthenticated(), IsProjectMember()]
         return super().get_permissions()
+
+    @action(detail=True, methods=['get'])
+    def analytics(self, request, pk=None):
+        """
+        Retorna métricas para el dashboard del proyecto.
+        - Distribución de prioridades.
+        - Carga de trabajo por usuario.
+        - Datos para Burndown Chart del sprint activo.
+        """
+        project = self.get_object()
+        from apps.tasks.models import Task, Sprint
+
+        # 1. Prioridades
+        priority_counts = Task.objects.filter(project=project).values('priority').annotate(count=Count('id'))
+        priorities_data = {item['priority']: item['count'] for item in priority_counts}
+
+        # 2. Carga de trabajo (Tareas por usuario)
+        workload_counts = Task.objects.filter(project=project).values('assignee__first_name', 'assignee__email').annotate(count=Count('id'))
+        workload_data = [
+            {
+                "name": item['assignee__first_name'] or item['assignee__email'] or "Sin asignar",
+                "tasks": item['count']
+            } for item in workload_counts
+        ]
+
+        # 3. Datos de Burndown (Sprint activo)
+        active_sprint = Sprint.objects.filter(project=project, status='active').first()
+        burndown_data = []
+        
+        if active_sprint:
+            total_points = Task.objects.filter(sprint=active_sprint).aggregate(total=Sum('story_points'))['total'] or 0
+            
+            # Generar puntos por día
+            start = active_sprint.start_date.date()
+            end = active_sprint.end_date.date()
+            days_count = (end - start).days + 1
+            
+            # Obtener tareas completadas por día
+            done_tasks = Task.objects.filter(
+                sprint=active_sprint, 
+                column__is_done_column=True
+            ).values('updated_at__date').annotate(points=Sum('story_points')).order_by('updated_at__date')
+            
+            points_by_date = {item['updated_at__date']: item['points'] for item in done_tasks}
+            
+            cumulative_done = 0
+            for i in range(days_count):
+                current_date = start + timedelta(days=i)
+                points_today = points_by_date.get(current_date, 0)
+                cumulative_done += points_today
+                
+                # Línea ideal: baja de total_points a 0 linealmente
+                ideal = total_points - (total_points / (days_count - 1) * i) if days_count > 1 else 0
+                
+                burndown_data.append({
+                    "date": current_date.strftime("%d/%m"),
+                    "actual": total_points - cumulative_done,
+                    "ideal": round(max(0, ideal), 2)
+                })
+
+        return Response({
+            "priorities": priorities_data,
+            "workload": workload_data,
+            "burndown": burndown_data,
+            "sprint_name": active_sprint.name if active_sprint else None
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], serializer_class=InviteMemberSerializer)
     def invite(self, request, pk=None):

@@ -75,3 +75,17 @@ export interface Project {
   created_at: string
   updated_at: string
 }
+
+export interface ProjectAnalytics {
+  priorities: Record<string, number>
+  workload: {
+    name: string
+    tasks: number
+  }[]
+  burndown: {
+    date: string
+    actual: number
+    ideal: number
+  }[]
+  sprint_name: string | null
+}

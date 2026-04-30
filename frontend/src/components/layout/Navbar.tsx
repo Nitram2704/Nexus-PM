@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { LogOut, ChevronRight, LayoutDashboard, Settings, ListTodo } from 'lucide-react'
+import { LogOut, ChevronRight, LayoutDashboard, Settings, ListTodo, TrendingUp } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
 
@@ -20,6 +20,7 @@ export function Navbar() {
   const isProjectSection = !!projectId
   const isKanban = location.pathname.includes('/kanban')
   const isBacklog = location.pathname.includes('/backlog')
+  const isInsights = location.pathname.includes('/insights')
 
   return (
     <nav className="h-14 bg-[#1a2235]/90 backdrop-blur-md border-b border-[#2a3655] flex items-center justify-between px-6 sticky top-0 z-50 shadow-sm">
@@ -50,7 +51,7 @@ export function Navbar() {
           </>
         )}
 
-        {isProjectSection && (isKanban || isBacklog) && (
+        {isProjectSection && (isKanban || isBacklog || isInsights) && (
           <>
             <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 mx-1" />
             <div className="flex items-center p-1 gap-1 rounded-lg bg-slate-800/50 border border-slate-700/50">
@@ -75,6 +76,17 @@ export function Navbar() {
               >
                 <ListTodo className="w-4 h-4" />
                 Planificación
+              </Link>
+              <Link
+                to={`/project/${projectId}/insights`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  isInsights
+                    ? 'bg-slate-700 text-blue-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                }`}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Insights
               </Link>
             </div>
           </>
