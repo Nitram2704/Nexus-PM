@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { 
   CheckCircle2, Clock, AlertTriangle, 
-  ChevronRight, Calendar, Briefcase, ExternalLink, Loader2,
-  FolderOpen, Rocket
+  ChevronRight, Briefcase, Loader2,
+  FolderOpen, Rocket, Terminal
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { getDashboardDataApi } from '@/api/dashboard'
@@ -17,98 +17,122 @@ export function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#020203]">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-800" />
+      <div className="flex items-center justify-center min-h-screen bg-[var(--color-bg)]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-6 h-6 border border-cyan-400/30 flex items-center justify-center">
+            <Loader2 className="w-3 h-3 animate-spin text-cyan-400" />
+          </div>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-white/30">SYS_LOADING...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#020203] text-slate-400 p-8 lg:p-14 xl:p-20">
+    <div className="min-h-screen bg-[var(--color-bg)] text-white/60 p-6 lg:p-10">
       
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 xl:gap-20 items-start">
-        
-        {/* COLUMNA IZQUIERDA */}
-        <div className="lg:col-span-3">
-          <header className="px-4 pt-4">
-             <h1 className="text-6xl font-black tracking-tighter text-white leading-none mb-10">
-                Nexus<span className="text-blue-500">.</span>
-             </h1>
-             <p className="text-slate-500 text-lg font-medium leading-tight">
-                Bienvenido, {user?.first_name}. <br />
-                Sistema operativo y estable.
-             </p>
-          </header>
+      {/* HEADER */}
+      <header className="mb-10 flex items-end justify-between border-b border-white/5 pb-6">
+        <div>
+          <div className="flex items-center gap-3 mb-3">
+            <Terminal className="w-4 h-4 text-cyan-400/60" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/30">// SYS_DASHBOARD</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-white">
+            Nexus<span className="text-cyan-400">_</span>PM
+          </h1>
+          <p className="font-mono text-xs text-white/30 mt-1">
+            USER: {user?.first_name?.toUpperCase() || 'OPERATOR'} // STATUS: ONLINE
+          </p>
+        </div>
+        <div className="text-right font-mono text-[10px] text-white/20 leading-relaxed">
+          <div>BUILD: v0.7.2</div>
+          <div>UPTIME: {new Date().toLocaleDateString('es-CO')}</div>
+        </div>
+      </header>
 
-          {/* POSICIÓN INTERMEDIA FORZADA CON PIXELES */}
-          <div style={{ marginTop: '280px' }}>
-             <div className="px-6 mb-8 text-[11px] font-black uppercase tracking-[0.5em] text-slate-800">Estado Local</div>
-             <div className="card-premium p-10 space-y-12 bg-white/0.5">
-                <StatRow label="Asignadas" value={data?.stats.total_assigned || 0} icon={<Briefcase className="w-4 h-4 text-blue-500" />} />
-                <div className="h-px bg-white/2" />
-                <StatRow label="Pendientes" value={data?.stats.pending || 0} icon={<Clock className="w-4 h-4 text-slate-500" />} />
-                <div className="h-px bg-white/2" />
-                <StatRow label="Terminadas" value={data?.stats.completed || 0} icon={<CheckCircle2 className="w-4 h-4 text-emerald-500" />} />
-             </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* LEFT COLUMN: Stats */}
+        <div className="lg:col-span-3 space-y-4">
+          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/20 px-1 mb-3">
+            // ESTADO_LOCAL
+          </div>
+          
+          <StatRow 
+            label="ASSIGNED" 
+            value={data?.stats.total_assigned || 0} 
+            icon={<Briefcase className="w-3 h-3 text-cyan-400" />} 
+            accent="cyan"
+          />
+          <StatRow 
+            label="PENDING" 
+            value={data?.stats.pending || 0} 
+            icon={<Clock className="w-3 h-3 text-amber-400" />} 
+            accent="amber"
+          />
+          <StatRow 
+            label="COMPLETED" 
+            value={data?.stats.completed || 0} 
+            icon={<CheckCircle2 className="w-3 h-3 text-emerald-400" />} 
+            accent="emerald"
+          />
+
+          {/* System quote */}
+          <div className="mt-8 border border-white/5 p-4 relative">
+            <div className="absolute top-0 left-0 w-1 h-1 bg-cyan-400" />
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-3 h-3 text-amber-400/60" />
+              <span className="font-mono text-[9px] uppercase tracking-widest text-white/20">SYS_ADVISORY</span>
+            </div>
+            <p className="text-xs text-white/40 leading-relaxed italic">
+              "Enfócate en la calidad. La velocidad vendrá después."
+            </p>
           </div>
         </div>
 
-        {/* COLUMNA CENTRAL */}
-        <main className="lg:col-span-6 pt-4">
-           <div className="flex items-center gap-6 px-10 mb-10">
-             <Calendar className="w-4 h-4 text-blue-500/40" />
-             <h2 className="text-[10px] font-black uppercase tracking-[0.5em] text-slate-500">Operaciones</h2>
-           </div>
+        {/* CENTER COLUMN: Operations */}
+        <main className="lg:col-span-6">
+          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/20 px-1 mb-3 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-emerald-400 animate-pulse" />
+            // OPERACIONES_ACTIVAS
+          </div>
 
-           <div className="card-premium min-h-[750px] flex flex-col bg-white/0.5">
-              {data?.tasks && data.tasks.length > 0 ? (
-                <div className="divide-y divide-white/2">
-                   {data.tasks.map((task: any) => (
-                     <WorkItem key={task.id} task={task} />
-                   ))}
+          <div className="border border-white/5 min-h-[500px] relative">
+            <div className="absolute top-0 left-0 w-8 h-[1px] bg-cyan-400/50" />
+            <div className="absolute top-0 right-0 w-1 h-1 bg-cyan-400/30" />
+            
+            {data?.tasks && data.tasks.length > 0 ? (
+              <div className="divide-y divide-white/5">
+                {data.tasks.map((task: any) => (
+                  <WorkItem key={task.id} task={task} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-16 text-center gap-6 min-h-[500px]">
+                <div className="w-12 h-12 border border-white/5 flex items-center justify-center">
+                  <Rocket className="w-5 h-5 text-white/10" />
                 </div>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center p-20 text-center gap-8">
-                   <div className="w-20 h-20 rounded-full bg-slate-900 border border-white/2 flex items-center justify-center">
-                      <Rocket className="w-10 h-10 text-slate-800" />
-                   </div>
-                   <div className="space-y-2">
-                      <p className="text-3xl font-bold text-slate-300 tracking-tight">Cielo despejado</p>
-                      <p className="text-slate-600 text-lg font-light">Sin tareas pendientes hoy.</p>
-                   </div>
+                <div className="space-y-2">
+                  <p className="text-lg font-semibold text-white/60 tracking-tight">CLEAR_SKY</p>
+                  <p className="font-mono text-[10px] text-white/20 uppercase tracking-widest">No pending operations detected.</p>
                 </div>
-              )}
-           </div>
+              </div>
+            )}
+          </div>
         </main>
 
-        {/* COLUMNA DERECHA */}
+        {/* RIGHT COLUMN: Projects */}
         <div className="lg:col-span-3">
-           <section className="pt-4">
-              <div className="flex items-center gap-6 px-8 mb-10">
-                <FolderOpen className="w-4 h-4 text-indigo-500/40" />
-                <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Ecosistema</h2>
-              </div>
-              <div className="space-y-4">
-                 {data?.projects?.map((project: any) => (
-                   <ProjectMiniCard key={project.id} project={project} />
-                 ))}
-              </div>
-           </section>
-
-           {/* INSIGHTS: POSICIÓN MEDIA FIJA (mt-32) */}
-           <section style={{ marginTop: '280px' }}>
-              <div className="card-premium p-12 bg-blue-500/1 border-blue-500/4">
-                 <div className="flex flex-col gap-10">
-                    <div className="flex items-center gap-5 text-blue-500/60">
-                       <AlertTriangle className="w-6 h-6" />
-                       <span className="text-[11px] font-black uppercase tracking-[0.3em]">Consejo Nexus</span>
-                    </div>
-                    <p className="text-2xl text-slate-500 font-medium italic tracking-tight leading-relaxed">
-                       "Enfócate en la calidad. La velocidad vendrá después."
-                    </p>
-                 </div>
-              </div>
-           </section>
+          <div className="font-mono text-[10px] uppercase tracking-[0.3em] text-white/20 px-1 mb-3 flex items-center gap-2">
+            <FolderOpen className="w-3 h-3 text-white/15" />
+            // ECOSYSTEM
+          </div>
+          <div className="space-y-2">
+            {data?.projects?.map((project: any) => (
+              <ProjectMiniCard key={project.id} project={project} />
+            ))}
+          </div>
         </div>
 
       </div>
@@ -116,16 +140,15 @@ export function DashboardPage() {
   )
 }
 
-function StatRow({ label, value, icon }: any) {
+function StatRow({ label, value, icon, accent }: any) {
+  const borderColor = accent === 'cyan' ? 'border-l-cyan-400/30' : accent === 'amber' ? 'border-l-amber-400/30' : 'border-l-emerald-400/30'
   return (
-    <div className="flex items-center justify-between py-2 px-2">
-      <div className="flex items-center gap-8">
-        <div className="p-3 rounded-lg bg-white/2">
-          {icon}
-        </div>
-        <span className="text-[11px] font-bold uppercase tracking-[0.4em] text-slate-700">{label}</span>
+    <div className={`border border-white/5 ${borderColor} border-l-2 p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors`}>
+      <div className="flex items-center gap-3">
+        {icon}
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/30">{label}</span>
       </div>
-      <span className="text-5xl font-black text-white tracking-widest tabular-nums">{value}</span>
+      <span className="font-mono text-2xl font-bold text-white tabular-nums">{value}</span>
     </div>
   )
 }
@@ -134,24 +157,24 @@ function WorkItem({ task }: any) {
   return (
     <Link 
       to={`/project/${task.project_id}/kanban`}
-      className="flex group items-center justify-between p-10 hover:bg-white/1.5 transition-all border-l-2 border-transparent hover:border-blue-500/20"
+      className="flex group items-center justify-between p-5 hover:bg-white/[0.02] transition-all border-l-2 border-transparent hover:border-l-cyan-400/50"
     >
-      <div className="flex items-center gap-14">
-        <div className={`w-2 h-16 rounded-full ${
-          task.priority === 'high' ? 'bg-red-500/50 shadow-[0_0_30px_rgba(239,68,68,0.3)]' : 'bg-slate-900'
+      <div className="flex items-center gap-6">
+        <div className={`w-1 h-10 ${
+          task.priority === 'high' ? 'bg-rose-500/60' : 'bg-white/5'
         }`} />
-        <div className="space-y-4">
-          <div className="flex items-center gap-8 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-600">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3 font-mono text-[9px] uppercase tracking-[0.2em] text-white/20">
             <span>{task.key}</span>
-            <span className="text-blue-500/10">|</span>
+            <span className="text-white/5">|</span>
             <span>{task.project_name}</span>
           </div>
-          <p className="text-3xl font-black text-slate-200 group-hover:text-white transition-colors tracking-tighter">
+          <p className="text-sm font-semibold text-white/70 group-hover:text-white transition-colors tracking-tight">
             {task.title}
           </p>
         </div>
       </div>
-      <ChevronRight className="w-8 h-8 text-slate-950 group-hover:text-blue-500 group-hover:translate-x-4 transition-all duration-500" />
+      <ChevronRight className="w-4 h-4 text-white/10 group-hover:text-cyan-400 group-hover:translate-x-1 transition-all" />
     </Link>
   )
 }
@@ -160,18 +183,19 @@ function ProjectMiniCard({ project }: any) {
   return (
     <Link 
       to={`/project/${project.id}/kanban`}
-      className="card-premium p-10 flex items-center justify-between group border-transparent"
+      className="border border-white/5 p-4 flex items-center justify-between group hover:bg-white/[0.02] hover:border-white/10 transition-all relative"
     >
-      <div className="flex items-center gap-10">
-        <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center font-black text-slate-700 text-lg shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+      <div className="absolute top-0 left-0 w-1 h-1 bg-cyan-400/30 group-hover:bg-cyan-400 transition-colors" />
+      <div className="flex items-center gap-4">
+        <div className="w-8 h-8 border border-white/10 flex items-center justify-center font-mono text-[10px] font-bold text-white/30 group-hover:border-cyan-400/30 group-hover:text-cyan-400 transition-all">
           {project.key}
         </div>
-        <div className="space-y-1">
-          <h3 className="text-xl font-black text-slate-300 group-hover:text-white transition-colors tracking-tighter leading-none">{project.name}</h3>
-          <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest leading-none">{project.role}</p>
+        <div>
+          <h3 className="text-sm font-semibold text-white/60 group-hover:text-white transition-colors tracking-tight">{project.name}</h3>
+          <p className="font-mono text-[9px] text-white/15 uppercase tracking-widest">{project.role}</p>
         </div>
       </div>
-      <ExternalLink className="w-5 h-5 text-slate-900 group-hover:text-blue-500 transition-colors" />
+      <ChevronRight className="w-3 h-3 text-white/10 group-hover:text-cyan-400 transition-colors" />
     </Link>
   )
 }
