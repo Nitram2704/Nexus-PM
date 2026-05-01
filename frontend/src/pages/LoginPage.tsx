@@ -72,9 +72,9 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] flex">
+    <div className="h-screen bg-(--color-bg) flex overflow-hidden">
       {/* ── Left panel: tactical branding ────────────────────── */}
-      <div className="hidden lg:flex flex-col justify-between flex-[0_0_50%] border-r border-white/5 p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between flex-[0_0_50%] border-r border-white/5 px-10 py-8 relative overflow-hidden">
         {/* Grid background */}
         <div 
           className="absolute inset-0 opacity-30"
@@ -89,8 +89,8 @@ export function LoginPage() {
         {/* Top: Logo */}
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-6 h-6 border border-cyan-400/30 flex items-center justify-center relative">
-              <div className="absolute top-0 left-0 w-1.5 h-[1px] bg-cyan-400" />
+            <div className="w-5 h-5 border border-cyan-400/30 flex items-center justify-center relative">
+              <div className="absolute top-0 left-0 w-1.5 h-px bg-cyan-400" />
               <div className="w-2 h-2 bg-cyan-400/20" />
             </div>
             <span className="font-mono text-[11px] font-bold tracking-[0.3em] text-white/60 uppercase">Nexus_PM</span>
@@ -101,8 +101,8 @@ export function LoginPage() {
         </div>
 
         {/* Center: Headline */}
-        <div className="relative z-10 max-w-md">
-          <h1 className="text-4xl font-bold tracking-tight text-white leading-tight mb-6">
+        <div className="relative z-10 max-w-md flex-1 flex flex-col justify-center">
+          <h1 className="text-3xl font-bold tracking-tight text-white leading-tight mb-4">
             Tu equipo.<br />Tu sprint.<br />
             <span className="text-cyan-400">Tu agente IA.</span>
           </h1>
@@ -113,7 +113,7 @@ export function LoginPage() {
         </div>
 
         {/* Bottom: Stats */}
-        <div className="relative z-10 flex gap-8 border-t border-white/5 pt-6">
+        <div className="relative z-10 flex gap-8 border-t border-white/5 pt-4 shrink-0">
           {[
             { value: 'SCRUM', label: 'NATIVE' },
             { value: 'AI', label: 'INTEGRATED' },
@@ -128,8 +128,8 @@ export function LoginPage() {
       </div>
 
       {/* ── Right panel: form ────────────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-16">
-        <div className="w-full max-w-sm space-y-8">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-10">
+        <div className="w-full max-w-sm space-y-6">
           {/* Auth header */}
           <div>
             <div className="font-mono text-[9px] uppercase tracking-[0.3em] text-white/20 mb-4">
@@ -165,7 +165,7 @@ export function LoginPage() {
             </div>
           )}
 
-          <form id="login-form" className="space-y-5" onSubmit={handleSubmit} noValidate>
+          <form id="login-form" className="space-y-4" onSubmit={handleSubmit} noValidate>
             {/* Email */}
             <div className="space-y-1.5">
               <label htmlFor="login-email" className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/30 block">
@@ -182,7 +182,7 @@ export function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLocked || isLoading}
                   required
-                  className="w-full h-10 pl-9 pr-3 bg-white/[0.03] border border-white/10 text-white text-sm font-mono placeholder:text-white/15 focus:border-cyan-400/50 focus:outline-none transition-colors disabled:opacity-30"
+                  className="w-full h-10 pl-9 pr-3 bg-white/3 border border-white/10 text-white text-sm font-mono placeholder:text-white/15 focus:border-cyan-400/50 focus:outline-none transition-colors disabled:opacity-30"
                 />
               </div>
             </div>
@@ -208,7 +208,7 @@ export function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLocked || isLoading}
                   required
-                  className="w-full h-10 pl-9 pr-10 bg-white/[0.03] border border-white/10 text-white text-sm font-mono placeholder:text-white/15 focus:border-cyan-400/50 focus:outline-none transition-colors disabled:opacity-30"
+                  className="w-full h-10 pl-9 pr-10 bg-white/3 border border-white/10 text-white text-sm font-mono placeholder:text-white/15 focus:border-cyan-400/50 focus:outline-none transition-colors disabled:opacity-30"
                 />
                 <button
                   type="button"

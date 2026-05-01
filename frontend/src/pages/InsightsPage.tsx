@@ -34,7 +34,7 @@ export default function InsightsPage() {
   const hasBurndown = data?.burndown && data.burndown.length > 0
 
   return (
-    <div className="h-[calc(100vh-48px)] overflow-hidden flex flex-col px-4 pt-4 pb-4 gap-4 bg-[var(--color-bg)] text-white/40 select-none">
+    <div className="h-[calc(100vh-48px)] overflow-hidden flex flex-col px-4 pt-3 pb-3 gap-3 bg-(--color-bg) text-white/40 select-none">
       
       {/* HEADER */}
       <header className="flex items-center justify-between shrink-0 border-b border-white/5 pb-3">
@@ -42,7 +42,7 @@ export default function InsightsPage() {
            <h1 className="font-mono text-sm font-bold text-white uppercase tracking-[0.15em]">
              INTEL<span className="text-cyan-400">_</span>REPORT
            </h1>
-           <div className="h-3 w-[1px] bg-white/10" />
+           <div className="h-3 w-px bg-white/10" />
            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20">
              {data?.sprint_name || '// WORKFLOW_ANALYTICS'}
            </span>
@@ -59,7 +59,7 @@ export default function InsightsPage() {
         {/* ROW 1 */}
         <div className="grid grid-cols-12 gap-3 min-h-0">
            <section className="col-span-9 border border-white/5 p-4 flex flex-col min-h-0 relative">
-              <div className="absolute top-0 left-0 w-6 h-[1px] bg-cyan-400/40" />
+              <div className="absolute top-0 left-0 w-6 h-px bg-cyan-400/40" />
               <div className="flex items-center justify-between mb-2 shrink-0">
                  <h2 className="font-mono text-[9px] text-white/30 uppercase tracking-[0.3em] flex items-center gap-2">
                    <Activity className="w-3 h-3 text-cyan-400/60" /> BURN_VELOCITY
@@ -89,7 +89,7 @@ export default function InsightsPage() {
            </section>
 
            <section className="col-span-3 border border-white/5 p-4 flex flex-col min-h-0 relative">
-              <div className="absolute top-0 left-0 w-4 h-[1px] bg-amber-400/40" />
+              <div className="absolute top-0 left-0 w-4 h-px bg-amber-400/40" />
               <h2 className="font-mono text-[9px] text-white/20 uppercase tracking-widest mb-3 shrink-0 flex items-center gap-2">
                 PRIORITY_MAP
               </h2>
@@ -108,7 +108,7 @@ export default function InsightsPage() {
         {/* ROW 2 */}
         <div className="grid grid-cols-12 gap-3 min-h-0">
            <section className="col-span-9 border border-white/5 p-4 flex flex-col min-h-0 relative">
-              <div className="absolute top-0 left-0 w-6 h-[1px] bg-emerald-400/40" />
+              <div className="absolute top-0 left-0 w-6 h-px bg-emerald-400/40" />
               <h2 className="font-mono text-[9px] text-white/30 uppercase tracking-[0.3em] mb-3 shrink-0 flex items-center gap-2">
                 <Users className="w-3 h-3 text-emerald-400/60" /> TEAM_LOAD
               </h2>
@@ -123,8 +123,8 @@ export default function InsightsPage() {
               </div>
            </section>
 
-           <div className="col-span-3 border border-rose-400/10 p-4 flex flex-col justify-center relative bg-rose-500/[0.02]">
-              <div className="absolute top-0 left-0 w-4 h-[1px] bg-rose-400/50" />
+           <div className="col-span-3 border border-rose-400/10 p-4 flex flex-col justify-center relative bg-rose-500/2">
+              <div className="absolute top-0 left-0 w-4 h-px bg-rose-400/50" />
               <div className="flex items-center gap-2 text-rose-400/60 mb-3 font-mono text-[9px] uppercase tracking-[0.2em] font-bold">
                 RISK_SENTINEL
               </div>
