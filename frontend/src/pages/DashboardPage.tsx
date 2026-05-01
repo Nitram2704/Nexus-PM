@@ -62,8 +62,8 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="flex-1 flex flex-col p-3 gap-2">
+          {/* Stats — centered vertically */}
+          <div className="flex-1 flex flex-col justify-center p-3 gap-2">
             <StatRow 
               label="ASSIGNED" 
               value={data?.stats.total_assigned || 0} 
@@ -83,8 +83,8 @@ export function DashboardPage() {
               accent="emerald"
             />
 
-            {/* Advisory — pushed to bottom */}
-            <div className="mt-auto border border-white/5 p-3 relative">
+            {/* Advisory */}
+            <div className="border border-white/5 p-3 relative mt-4">
               <div className="absolute top-0 left-0 w-1 h-1 bg-cyan-400" />
               <div className="flex items-center gap-2 mb-2">
                 <AlertTriangle className="w-3 h-3 text-amber-400/60" />
