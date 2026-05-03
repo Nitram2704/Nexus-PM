@@ -1,73 +1,93 @@
-# React + TypeScript + Vite
+<div align="center">
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+  _   _                       ____  __  __   (FRONTEND)
+ | \ | | _____  ___   _ ___  |  _ \|  \/  |  ARCHITECTURE
+ |  \| |/ _ \ \/ / | | / __| | |_) | |\/| |  [SYSTEM_V0.1]
+ | |\  |  __/>  <| |_| \__ \_|  __/| |  | |
+ |_| \_|\___/_/\_\\__,_|___(_)_|   |_|  |_|
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+**Tactical Command Center for Nexus-PM — Built with React, Tailwind v4, and Zustand.**
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+</div>
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## ⚡ Frontend Overview
+
+The Nexus-PM frontend is a high-performance **command-center interface** designed for Agile orchestration. It utilizes a "Tactical OS" aesthetic (Midnight Void & Cyan) with strict geometric proportions and mono-spaced data displays.
+
+## 🛠️ Technology Stack
+
+- **Framework:** React 19 + TypeScript 6
+- **Build Tool:** Vite 8
+- **Styling:** Tailwind CSS v4 (CSS-first configuration)
+- **State Management:**
+    - `Zustand`: Global UI state & Auth persistence.
+    - `TanStack Query v5`: Server-state management & API caching.
+- **Routing:** React Router 7
+- **Visualization:** Recharts (Project insights & Velocity)
+- **Interactions:** `@hello-pangea/dnd` for Kanban orchestration.
+
+---
+
+## 📁 Project Structure
+
+```text
+src/
+├── api/            # Axios interceptors & endpoint-specific modules
+├── components/
+│   ├── ai/         # Specialized AI interaction components (BacklogGenerator)
+│   ├── kanban/     # Logic for Board, Columns, and Task drawers
+│   ├── layout/     # Persistent Global Navigation & Sidebar
+│   └── ui/         # Base Tactical atomic components (TacticalCard, Buttons)
+├── pages/          # Full-page views (Dashboard, Backlog, Insights, Auth)
+├── store/          # Zustand global stores (authStore, projectStore)
+├── types/          # Global TypeScript interfaces & contract definitions
+├── lib/            # Utilities & helper functions (date-fns, supabase client)
+├── App.tsx         # Route orchestrator & Global Providers
+└── index.css       # Tactical Design Tokens & Global Styles (Grid background)
 ```
+
+---
+
+## 🚦 Getting Started
+
+### 1. Environment Configuration
+
+Create a `.env` file in this directory:
+
+```env
+VITE_API_URL=http://localhost:8000/api
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 2. Installation & Execution
+
+```bash
+# Install dependencies
+npm install
+
+# Start Tactical Orchestrator (Development)
+npm run dev
+
+# Build for Production
+npm run build
+```
+
+---
+
+## 🎨 Design Guidelines (Tactical OS)
+
+- **Colors:** Deep Void (`#020617`) background with Tactical Cyan (`#22d3ee`) accents.
+- **Typography:** Inter for body text; Monospaced (JetBrains Mono) for numerical data and system status.
+- **Geometry:** Zero `border-radius`. Use sutil `border-subtle` (`rgba(255,255,255,0.05)`) instead of shadows.
+- **Background:** Subtle linear grid (`1px` lines every `40px`) to give a blueprint feel.
+
+---
+
+<div align="center">
+  <i>Nexus-PM Frontend — Standardized Agile Command Center.</i>
+</div>
