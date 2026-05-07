@@ -39,3 +39,27 @@ export const importProposalApi = async (projectId: string, proposalId: string, s
     const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/import-proposal/${proposalId}/`, payload)
     return response.data
 }
+
+export interface AIRecommendation {
+    id: string
+    title: string
+    description: string
+    type: 'risk' | 'improvement' | 'technical'
+    status: 'pending' | 'applied' | 'discarded'
+    created_at: string
+}
+
+export const generateRecommendationsApi = async (projectId: string) => {
+    const response = await apiClient.post<AIRecommendation[]>(`/v1/projects/${projectId}/ai/recommendations/generate/`)
+    return response.data
+}
+
+export const getRecommendationsApi = async (projectId: string) => {
+    const response = await apiClient.get<AIRecommendation[]>(`/v1/projects/${projectId}/ai/recommendations/`)
+    return response.data
+}
+
+export const updateRecommendationApi = async (projectId: string, recommendationId: string, status: 'applied' | 'discarded') => {
+    const response = await apiClient.patch<AIRecommendation>(`/v1/projects/${projectId}/ai/recommendations/${recommendationId}/`, { status })
+    return response.data
+}

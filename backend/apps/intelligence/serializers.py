@@ -14,3 +14,9 @@ class AIProposalSerializer(serializers.ModelSerializer):
     class Meta:
         model = AIProposal
         fields = ['id', 'description', 'data', 'created_at', 'is_imported']
+
+class RecommendationSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import Recommendation
+        model = Recommendation
+        fields = ['id', 'title', 'description', 'type', 'status', 'created_at']

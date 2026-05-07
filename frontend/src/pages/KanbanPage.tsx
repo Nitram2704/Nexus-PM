@@ -11,6 +11,8 @@ import { Link } from 'react-router-dom'
 import { useProjectStore } from '@/store/projectStore'
 import { TaskDetailDrawer } from '@/components/kanban/TaskDetailDrawer'
 import { ColumnMenu } from '@/components/kanban/ColumnMenu'
+import { AISuggestionModal } from '@/components/kanban/AISuggestionModal'
+import RecommendationsPanel from '@/components/ai/RecommendationsPanel'
 import { 
   renameColumnApi, 
   clearColumnTasksApi, 
@@ -33,6 +35,8 @@ export function KanbanPage() {
   const [addingTaskToColumn, setAddingTaskToColumn] = useState<string | null>(null)
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false)
   
   // States for Actions and Confirmations
   const [busyColumnId, setBusyColumnId] = useState<string | null>(null)
@@ -277,7 +281,7 @@ export function KanbanPage() {
   
   const boardColumns = project?.columns ? project.columns.map(col => ({
     ...col,
-    tasks: col.tasks.filter(t => t.sprint === (activeSprint?.id || null))
+    tasks: (col.tasks || []).filter(t => t.sprint === (activeSprint?.id || null))
   })) : []
 
   return (
@@ -294,6 +298,20 @@ export function KanbanPage() {
           )}
         </div>
         <div className="kanban-header-actions">
+          <button 
+            className="btn-secondary"
+            onClick={() => setIsRecommendationsOpen(true)}
+            title="Ver recomendaciones de la IA"
+          >
+            Recomendaciones AI
+          </button>
+          <button 
+            className="btn-ai"
+            onClick={() => setIsAIModalOpen(true)}
+            title="Generar historias o backlog con IA"
+          >
+            ✨ Nexus AI
+          </button>
           <button 
             className="btn-primary"
             onClick={() => {
@@ -468,6 +486,21 @@ export function KanbanPage() {
         onUpdate={handleTaskUpdate}
       />
 
+      <AISuggestionModal 
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        projectId={projectId || ''}
+        onSuccess={loadProject}
+      />
+
+      {projectId && (
+        <RecommendationsPanel
+          projectId={projectId}
+          isOpen={isRecommendationsOpen}
+          onClose={() => setIsRecommendationsOpen(false)}
+        />
+      )}
+
       <ConfirmDialog 
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
@@ -539,6 +572,26 @@ export function KanbanPage() {
         .column-footer { padding: 8px 16px 16px; }
         .btn-add-inline { width: 100%; background: transparent; border: none; color: var(--color-text-muted); font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .btn-add-inline:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+        
+        .btn-ai {
+          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+        }
+        .btn-ai:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+          filter: brightness(1.1);
+        }
       `}</style>
     </div>
   )

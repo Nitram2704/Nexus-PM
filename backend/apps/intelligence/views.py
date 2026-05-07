@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from apps.projects.models import Project
 from apps.projects.permissions import IsProjectMember
-from .models import AIProposal, AIGenerationLog
-from .serializers import GenerateBacklogSerializer, AIProposalSerializer
+from .models import AIProposal, AIGenerationLog, Recommendation
+from .serializers import GenerateBacklogSerializer, AIProposalSerializer, RecommendationSerializer
 from .client import BacklogAIClient
 from apps.tasks.models import Task
 
@@ -147,3 +147,67 @@ class ImportProposalView(views.APIView):
             creator=user,
             column=proposal.project.columns.first()
         )
+
+class GenerateRecommendationsView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def post(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        
+        # Build project summary
+        tasks = Task.objects.filter(project=project)
+        total_tasks = tasks.count()
+        done_tasks = tasks.filter(column__is_done_column=True).count()
+        
+        summary = f"Proyecto: {project.name}. Total tareas: {total_tasks}, Completadas: {done_tasks}."
+        if total_tasks > 0:
+            summary += " Tareas recientes: " + ", ".join([t.title for t in tasks.order_by('-created_at')[:5]])
+            
+        client = BacklogAIClient()
+        recs_data = client.generate_recommendations(summary)
+        
+        created_recs = []
+        for rec in recs_data:
+            obj = Recommendation.objects.create(
+                project=project,
+                title=rec.get('title', 'Recomendación'),
+                description=rec.get('description', ''),
+                type=rec.get('type', 'improvement')
+            )
+            created_recs.append(obj)
+            
+        # Log de generación
+        AIGenerationLog.objects.create(
+            project=project,
+            user=request.user,
+            prompt_type='recommendations_gen',
+            input_text=summary,
+            output_text=str(recs_data)
+        )
+            
+        return response.Response(
+            RecommendationSerializer(created_recs, many=True).data,
+            status=status.HTTP_201_CREATED
+        )
+
+class RecommendationListView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        recs = Recommendation.objects.filter(project=project)
+        return response.Response(RecommendationSerializer(recs, many=True).data)
+
+class RecommendationUpdateView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def patch(self, request, project_id, pk):
+        rec = get_object_or_404(Recommendation, id=pk, project_id=project_id)
+        new_status = request.data.get('status')
+        
+        if new_status in ['pending', 'applied', 'discarded']:
+            rec.status = new_status
+            rec.save()
+            return response.Response(RecommendationSerializer(rec).data)
+            
+        return response.Response({"error": "Estado inválido."}, status=status.HTTP_400_BAD_REQUEST)

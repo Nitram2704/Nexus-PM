@@ -98,3 +98,40 @@ class BacklogAIClient:
 
     def _get_mock_backlog(self, description):
         return [{"epic": "Autenticación (Fallback)", "items": [{"title": "Login", "description": "d", "type": "feature", "priority": "high"}]}]
+
+    def generate_recommendations(self, project_summary):
+        if self.is_mock:
+            return [
+                {"title": "Falta de pruebas", "description": "No hay tareas de QA asignadas.", "type": "risk"},
+                {"title": "Actualizar dependencias", "description": "El backend tiene paquetes antiguos.", "type": "technical"},
+                {"title": "Mejorar UI", "description": "Refinar el diseño del dashboard.", "type": "improvement"},
+            ]
+        
+        prompt = f"""
+        Analiza el siguiente resumen del estado actual de un proyecto y genera recomendaciones clasificadas:
+        "{project_summary}"
+        
+        Clasifica cada recomendación en uno de estos tipos: "risk" (riesgo), "improvement" (mejora), o "technical" (sugerencia técnica).
+        Formato de salida esperado: [{{ "title": "título", "description": "descripción", "type": "risk" }}]
+        Responde SOLO el JSON.
+        """
+        
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.GenerationConfig(response_mime_type="application/json")
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Error con JSON mode en recomendaciones: {e}. Intentando parseo manual...")
+            try:
+                response = self.model.generate_content(prompt)
+                text = response.text
+                if "```json" in text:
+                    text = text.split("```json")[1].split("```")[0]
+                elif "```" in text:
+                    text = text.split("```")[1].split("```")[0]
+                return json.loads(text.strip())
+            except Exception as e2:
+                print(f"Error final en recomendaciones: {e2}")
+                return []
