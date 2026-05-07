@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { Navbar } from './Navbar'
+import { NexusChat } from '../ai/NexusChat'
 
 export function MainLayout() {
   return (
@@ -8,6 +9,7 @@ export function MainLayout() {
       <main className="flex-1 overflow-x-hidden overflow-y-auto">
         <Outlet />
       </main>
+      <NexusChat />
     </div>
   )
 }

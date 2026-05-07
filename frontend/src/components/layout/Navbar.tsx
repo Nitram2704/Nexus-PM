@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { LogOut, Settings } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
+import { NotificationBell } from '../notifications/NotificationBell'
 
 export function Navbar() {
   const location = useLocation()
@@ -91,6 +92,7 @@ export function Navbar() {
 
       {/* Right: user actions */}
       <div className="flex items-center gap-4 text-[10px] data-label">
+        <NotificationBell />
         <button
           className="text-white/40 hover:text-white transition-colors flex items-center gap-2"
         >

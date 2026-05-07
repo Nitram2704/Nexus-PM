@@ -1,5 +1,15 @@
 from rest_framework import serializers
-from .models import AIProposal
+
+from .models import AIProposal, AIMessage
+
+class AIMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIMessage
+        fields = ['id', 'role', 'content', 'created_at']
+
+class ChatInputSerializer(serializers.Serializer):
+    content = serializers.CharField()
+
 
 class GenerateBacklogSerializer(serializers.Serializer):
     description = serializers.CharField(min_length=10, max_length=1000)

@@ -83,7 +83,48 @@ class BacklogAIClient:
                 print(f"Error final en historias: {e2}")
                 return self._get_mock_stories(requirement)
 
+
+    def chat(self, message, context="", history=None):
+        if self.is_mock:
+            return f"Nexus AI: Hola. Recibí tu mensaje: '{message}'. (Modo Mock)"
+        
+        if history is None:
+            history = []
+
+        history_str = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in history])
+
+        system_prompt = f"""
+        Eres Nexus AI, el Asistente Scrum Master avanzado para Nexus-PM.
+        Tu misión es optimizar el flujo de trabajo (Flow) y la carga del equipo.
+        
+        CONTEXTO ACTUAL DEL PROYECTO:
+        {context}
+        
+        HISTORIAL DE CONVERSACIÓN:
+        {history_str}
+        
+        INSTRUCCIONES:
+        1. Eres profesional, directo y táctico. Respondas como si estuvieras en una terminal de comando.
+        2. Si el usuario te pide una auditoría o pregunta cómo va el equipo:
+           - Analiza quién tiene más tareas/puntos.
+           - Identifica cuellos de botella.
+        3. NUEVO: Si recibes el comando `/nexus` o similar, genera una "NARRATIVA DE PROYECTO" (Wins y Risks).
+        4. Siempre usa tablas Markdown para datos si es posible.
+        5. Responde en español (Neutro o de España).
+        """
+        
+        try:
+            # Combinamos el sistema y el mensaje (Gemini 1.5 style)
+            response = self.model.generate_content(
+                f"{system_prompt}\n\nMensaje del usuario: {message}"
+            )
+            return response.text
+        except Exception as e:
+            print(f"Error en chat AI: {e}")
+            return "Lo siento, tuve un problema procesando tu solicitud tactical."
+
     def _get_mock_stories(self, requirement):
+
         return [
             {
                 "role": "Usuario",

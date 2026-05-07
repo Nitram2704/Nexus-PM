@@ -16,6 +16,7 @@ from .serializers import (
     ColumnSerializer
 )
 from .permissions import IsProjectMember, IsProjectOwnerOrAdmin
+from .analytics import ProjectAnalytics
 
 User = get_user_model()
 
@@ -61,13 +62,18 @@ class ProjectViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def analytics(self, request, pk=None):
         """
-        Retorna métricas para el dashboard del proyecto.
+        Retorna métricas avanzadas para el dashboard del proyecto.
         - Distribución de prioridades.
         - Carga de trabajo por usuario.
-        - Datos para Burndown Chart del sprint activo.
+        - Burndown Chart (Sprint activo).
+        - Velocidad y Cycle Time (Módulo Velocity Scan).
         """
         project = self.get_object()
         from apps.tasks.models import Task, Sprint
+        
+        # Engine de analíticas avanzado
+        engine = ProjectAnalytics(project)
+        scan_data = engine.get_summary()
 
         # 1. Prioridades
         priority_counts = Task.objects.filter(project=project).values('priority').annotate(count=Count('id'))
@@ -82,45 +88,16 @@ class ProjectViewSet(viewsets.ModelViewSet):
             } for item in workload_counts
         ]
 
-        # 3. Datos de Burndown (Sprint activo)
+        # 3. Datos de Sprint Activo
         active_sprint = Sprint.objects.filter(project=project, status='active').first()
-        burndown_data = []
-        
-        if active_sprint and active_sprint.start_date and active_sprint.end_date:
-            total_points = Task.objects.filter(sprint=active_sprint).aggregate(total=Sum('story_points'))['total'] or 0
-            
-            # Generar puntos por día
-            start = active_sprint.start_date.date()
-            end = active_sprint.end_date.date()
-            days_count = (end - start).days + 1
-            
-            # Obtener tareas completadas por día
-            done_tasks = Task.objects.filter(
-                sprint=active_sprint, 
-                column__is_done_column=True
-            ).values('updated_at__date').annotate(points=Sum('story_points')).order_by('updated_at__date')
-            
-            points_by_date = {item['updated_at__date']: item['points'] for item in done_tasks}
-            
-            cumulative_done = 0
-            for i in range(days_count):
-                current_date = start + timedelta(days=i)
-                points_today = points_by_date.get(current_date, 0)
-                cumulative_done += points_today
-                
-                # Línea ideal: baja de total_points a 0 linealmente
-                ideal = total_points - (total_points / (days_count - 1) * i) if days_count > 1 else 0
-                
-                burndown_data.append({
-                    "date": current_date.strftime("%d/%m"),
-                    "actual": total_points - cumulative_done,
-                    "ideal": round(max(0, ideal), 2)
-                })
 
         return Response({
             "priorities": priorities_data,
             "workload": workload_data,
-            "burndown": burndown_data,
+            "burndown": scan_data['burndown'],
+            "velocity": scan_data['velocity'],
+            "cycle_time": scan_data['cycle_time_days'],
+            "health_score": scan_data['health_score'],
             "sprint_name": active_sprint.name if active_sprint else None
         }, status=status.HTTP_200_OK)
 

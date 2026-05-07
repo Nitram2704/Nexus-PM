@@ -411,3 +411,40 @@ body {
   .auth-brand { flex: 0 0 auto; border-right: none; border-bottom: 1px solid var(--color-border); }
   .auth-form-panel { padding: 32px 24px; }
 }
+
+/* ─── Tactical Markdown (NCC) ────────────────────────────────────────────────── */
+.prose-xs {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.prose-xs p { margin-bottom: 0.5rem; }
+.prose-xs ul, .prose-xs ol { padding-left: 1rem; margin-bottom: 0.5rem; }
+.prose-xs li { margin-bottom: 0.25rem; }
+
+.prose-xs table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.prose-xs th {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--color-primary);
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+  text-transform: uppercase;
+  font-size: 9px;
+}
+
+.prose-xs td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.prose-xs tr:last-child td { border-bottom: none; }
+.prose-xs strong { color: var(--color-primary); }

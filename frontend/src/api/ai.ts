@@ -39,3 +39,20 @@ export const importProposalApi = async (projectId: string, proposalId: string, s
     const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/import-proposal/${proposalId}/`, payload)
     return response.data
 }
+
+export interface AIMessage {
+    id: string
+    role: 'user' | 'assistant'
+    content: string
+    created_at: string
+}
+
+export const sendMessageApi = async (projectId: string, content: string) => {
+    const response = await apiClient.post<AIMessage>(`/v1/projects/${projectId}/ai/chat/`, { content })
+    return response.data
+}
+
+export const getChatHistoryApi = async (projectId: string) => {
+    const response = await apiClient.get<AIMessage[]>(`/v1/projects/${projectId}/ai/chat/history/`)
+    return response.data
+}

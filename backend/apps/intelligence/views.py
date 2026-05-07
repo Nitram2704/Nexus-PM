@@ -3,10 +3,117 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from apps.projects.models import Project
 from apps.projects.permissions import IsProjectMember
-from .models import AIProposal, AIGenerationLog
-from .serializers import GenerateBacklogSerializer, AIProposalSerializer
+from django.db import models
+
+from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage
+from .serializers import GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer, ChatInputSerializer
 from .client import BacklogAIClient
 from apps.tasks.models import Task
+
+class ChatView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def post(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        serializer = ChatInputSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            content = serializer.validated_data['content']
+            
+            # Get or create conversation
+            conversation, _ = AIConversation.objects.get_or_create(
+                project=project,
+                user=request.user
+            )
+            
+            # Save user message
+            AIMessage.objects.create(
+                conversation=conversation,
+                role='user',
+                content=content
+            )
+            
+            # Build context (including recent activity)
+            context = self._build_context(project)
+            
+            # Fetch last 10 messages for history
+            history_qs = conversation.messages.all().order_by('-created_at')[1:11] # Skip current msg
+            history = [{'role': m.role, 'content': m.content} for m in reversed(list(history_qs))]
+
+            # Call AI
+            client = BacklogAIClient()
+            ai_response = client.chat(content, context, history=history)
+            
+            # Save AI response
+            ai_msg = AIMessage.objects.create(
+                conversation=conversation,
+                role='assistant',
+                content=ai_response
+            )
+            
+            # Update conversation timestamp
+            conversation.save()
+            
+            return response.Response(AIMessageSerializer(ai_msg).data, status=status.HTTP_201_CREATED)
+        
+        return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def _build_context(self, project):
+        tasks = project.tasks.all()
+        active_sprint = project.sprints.filter(status='active').first()
+        
+        # User Workload
+        user_workload = tasks.values('assignee__first_name', 'assignee__email').annotate(
+            count=models.Count('id'),
+            points=models.Sum('story_points')
+        )
+        
+        load_summary = []
+        for uw in user_workload:
+            name = uw['assignee__first_name'] or uw['assignee__email'] or "Sin asignar"
+            load_summary.append(f"- {name}: {uw['count']} tareas ({uw['points'] or 0} pts)")
+
+        # Column Distribution (Bottlenecks)
+        col_dist = tasks.values('column__name').annotate(count=models.Count('id'))
+        bottlenecks = [f"- {c['column__name']}: {c['count']}" for c in col_dist]
+
+        # Recent Activity (last 5 movements/creations)
+        # Assuming Task model has a history or just use last created/updated
+        recent_tasks = tasks.order_by('-updated_at')[:5]
+        activity = [f"- {t.title}: {t.column.name} (Modificado {t.updated_at.strftime('%H:%M')})" for t in recent_tasks]
+
+        context = f"""
+        PROYECTO: {project.name} ({project.key})
+        SPRINT ACTIVO: {active_sprint.name if active_sprint else 'Ninguno'}
+        
+        ACTIVIDAD RECIENTE:
+        {chr(10).join(activity)}
+
+        DISTRIBUCIÓN DE CARGA POR EQUIPO:
+        {chr(10).join(load_summary)}
+        
+        ESTADO DEL TABLERO (COLUMNAS):
+        {chr(10).join(bottlenecks)}
+        
+        RESUMEN TOTAL:
+        - Tareas totales: {tasks.count()}
+        - Tareas completadas: {tasks.filter(column__name__icontains='done').count() or tasks.filter(column__name__icontains='completado').count()}
+        - Tareas en progreso: {tasks.filter(column__name__icontains='progreso').count() or tasks.filter(column__name__icontains='progress').count()}
+        """
+        return context
+
+class ChatHistoryView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        conversation = AIConversation.objects.filter(project=project, user=request.user).first()
+        
+        if not conversation:
+            return response.Response([], status=status.HTTP_200_OK)
+            
+        messages = conversation.messages.all().order_by('created_at')
+        return response.Response(AIMessageSerializer(messages, many=True).data)
 
 class GenerateBacklogView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]
