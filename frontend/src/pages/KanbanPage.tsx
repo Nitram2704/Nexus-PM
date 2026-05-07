@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, User } from 'lucide-react'
+import { Loader2, Plus, User, Bot } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { getSprintsApi } from '@/api/sprints'
 import { createTaskApi } from '@/api/tasks'
@@ -388,8 +388,12 @@ export function KanbanPage() {
                                   <span className="task-id">{task.key}</span>
                                 </div>
                                 <div className="task-assignee">
-                                  <div className="assignee-avatar">
-                                    <User size={12} />
+                                  <div className="assignee-avatar" style={{ opacity: (task.assignee || task.ai_assignee) ? 1 : 0.3 }} title={task.ai_assignee || 'Unassigned'}>
+                                    {task.ai_assignee ? (
+                                      <Bot size={12} className={task.ai_assignee === 'product_manager' ? 'text-purple-400' : task.ai_assignee === 'backend_architect' ? 'text-blue-400' : 'text-cyan-400'} />
+                                    ) : (
+                                      <User size={12} />
+                                    )}
                                   </div>
                                 </div>
                               </div>

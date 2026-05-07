@@ -8,7 +8,10 @@ from django.db import models
 from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage
 from .serializers import GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer, ChatInputSerializer
 from .client import BacklogAIClient
+from .agents.orchestrator import AgentOrchestrator
 from apps.tasks.models import Task
+from apps.notifications.models import Notification
+import threading
 
 class ChatView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]
@@ -254,3 +257,50 @@ class ImportProposalView(views.APIView):
             creator=user,
             column=proposal.project.columns.first()
         )
+
+class OrchestrateEpicView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def post(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        
+        # We assume the user passes {"epic_description": "We need a dashboard"}
+        epic_description = request.data.get('epic_description')
+        if not epic_description:
+            return response.Response({"error": "epic_description is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Spin up a thread to avoid blocking the HTTP request
+        user = request.user
+        def run_orchestration():
+            orchestrator = AgentOrchestrator()
+            tasks_data = orchestrator.orchestrate_epic(epic_description)
+            
+            # Auto-save tasks
+            column = project.columns.first()
+            created_count = 0
+            for t in tasks_data:
+                Task.objects.create(
+                    project=project,
+                    title=t.get('title', 'AI Proposed Task'),
+                    description=t.get('description', ''),
+                    type=t.get('type', 'task'),
+                    priority=t.get('priority', 'medium'),
+                    creator=user,
+                    column=column,
+                    ai_assignee=t.get('ai_assignee')
+                )
+                created_count += 1
+            
+            # Send Notification via Database (which the SSE stream picks up!)
+            Notification.objects.create(
+                user=user,
+                type='success',
+                title='Agentes Finalizaron',
+                content=f'La orquestación de "{epic_description[:20]}..." completó. {created_count} tareas fueron añadidas al backlog.'
+            )
+
+        thread = threading.Thread(target=run_orchestration)
+        thread.start()
+
+        return response.Response({"message": "Orchestration started. You will be notified when complete."}, status=status.HTTP_202_ACCEPTED)
+

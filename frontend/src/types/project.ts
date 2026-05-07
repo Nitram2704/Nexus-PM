@@ -36,6 +36,7 @@ export interface Task {
   status: string
   assignee: number | null
   assignee_email: string
+  ai_assignee: 'backend_architect' | 'frontend_specialist' | 'devops_automator' | 'qa_engineer' | 'ui_designer' | 'product_manager' | null
   creator: number
   creator_email: string
   story_points: number

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles } from 'lucide-react'
+import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles, Bot } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { Modal } from '@/components/Modal'
 import { getSprintsApi, createSprintApi, startSprintApi, completeSprintApi } from '@/api/sprints'
 import { getTasksApi, createTaskApi, updateTaskApi } from '@/api/tasks'
 import { AISuggestionModal } from '@/components/kanban/AISuggestionModal'
+import { AgentOrchestrationModal } from '@/components/kanban/AgentOrchestrationModal'
 import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { useProjectStore } from '@/store/projectStore'
@@ -24,6 +25,7 @@ export function BacklogPage() {
    const [isSprintModalOpen, setIsSprintModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false)
   const [newTaskSprintId, setNewTaskSprintId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -119,6 +121,12 @@ export function BacklogPage() {
           >
             <Sparkles size={16} /> Generar con IA
           </button>
+          <button 
+            className="btn-secondary flex items-center gap-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+            onClick={() => setIsAgentModalOpen(true)}
+          >
+            <Sparkles size={16} /> Ops-Room
+          </button>
           <button className="btn-primary" onClick={() => setIsSprintModalOpen(true)}>
             <Plus size={16} /> Crear Sprint
           </button>
@@ -201,6 +209,12 @@ export function BacklogPage() {
         onClose={() => setIsAIModalOpen(false)}
         projectId={projectId!}
         onSuccess={loadData}
+      />
+
+      <AgentOrchestrationModal
+        isOpen={isAgentModalOpen}
+        onClose={() => setIsAgentModalOpen(false)}
+        projectId={projectId!}
       />
 
       <style>{`
@@ -328,8 +342,12 @@ function TaskItem({ task, index }: { task: Task, index: number }) {
           <span className="text-muted text-xs font-mono w-16">{task.key}</span>
           <span className="flex-1 text-sm truncate">{task.title}</span>
           {task.story_points && <span className="count-badge bg-surface-2 px-2 rounded-full">{task.story_points}</span>}
-          <div className="assignee-avatar" style={{ opacity: task.assignee ? 1 : 0.3 }}>
-            <User size={12} />
+          <div className="assignee-avatar" style={{ opacity: (task.assignee || task.ai_assignee) ? 1 : 0.3 }} title={task.ai_assignee || 'Unassigned'}>
+            {task.ai_assignee ? (
+              <Bot size={12} className={task.ai_assignee === 'product_manager' ? 'text-purple-400' : task.ai_assignee === 'backend_architect' ? 'text-blue-400' : 'text-cyan-400'} />
+            ) : (
+              <User size={12} />
+            )}
           </div>
         </div>
       )}

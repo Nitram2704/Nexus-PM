@@ -56,3 +56,8 @@ export const getChatHistoryApi = async (projectId: string) => {
     const response = await apiClient.get<AIMessage[]>(`/v1/projects/${projectId}/ai/chat/history/`)
     return response.data
 }
+
+export const orchestrateEpicApi = async (projectId: string, epicDescription: string) => {
+    const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/orchestrate/`, { epic_description: epicDescription })
+    return response.data
+}
