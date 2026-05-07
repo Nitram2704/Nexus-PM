@@ -101,6 +101,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "sprint_name": active_sprint.name if active_sprint else None
         }, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['get'])
+    def hud_analytics(self, request, pk=None):
+        """
+        Retorna el historial de snapshots para los gráficos del HUD.
+        """
+        project = self.get_object()
+        from .models import ProjectMetricSnapshot
+        from .serializers import ProjectMetricSnapshotSerializer
+        from .analytics import ProjectAnalytics
+        
+        # Trigger calculation (actualización forzada para hoy)
+        engine = ProjectAnalytics(project)
+        engine.create_snapshot()
+        
+        snapshots = ProjectMetricSnapshot.objects.filter(project=project).order_by('date')
+        serializer = ProjectMetricSnapshotSerializer(snapshots, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     @action(detail=True, methods=['post'], serializer_class=InviteMemberSerializer)
     def invite(self, request, pk=None):
         """

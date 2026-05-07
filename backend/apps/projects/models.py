@@ -60,3 +60,21 @@ class Column(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.project.name}"
+
+class ProjectMetricSnapshot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='metrics')
+    date = models.DateField(db_index=True)
+    velocity = models.FloatField(default=0, help_text="Puntos completados en el último intervalo")
+    throughput = models.IntegerField(default=0, help_text="Tareas completadas")
+    cycle_time_avg = models.FloatField(default=0, help_text="Promedio de días en progreso")
+    flow_efficiency = models.FloatField(default=0, help_text="Ratio de tiempo activo vs total")
+    active_tasks_count = models.IntegerField(default=0)
+    completed_tasks_count = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['date']
+        unique_together = ('project', 'date')
+
+    def __str__(self):
+        return f"Snapshot {self.date} - {self.project.name}"

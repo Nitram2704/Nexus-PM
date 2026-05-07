@@ -1,26 +1,35 @@
 import { useQuery } from '@tanstack/react-query'
 import { useParams } from 'react-router-dom'
 import { 
-  XAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  AreaChart, Area, BarChart, Bar
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+  AreaChart, Area, BarChart, Bar, LineChart, Line
 } from 'recharts'
 import { 
   Loader2, Activity,
-  Users, TrendingUp, Zap, Clock, ShieldCheck
+  Users, TrendingUp, Zap, ShieldCheck,
+  Target, Globe, Cpu
 } from 'lucide-react'
-import { getProjectAnalytics } from '@/api/analytics'
+import { getProjectAnalytics, getHudAnalytics } from '@/api/analytics'
+import { motion } from 'framer-motion'
 
 export default function InsightsPage() {
   const { projectId } = useParams<{ projectId: string }>()
 
-  const { data, isLoading } = useQuery({
+  const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
     queryKey: ['project-analytics', projectId],
     queryFn: () => getProjectAnalytics(projectId!),
     enabled: !!projectId,
-    refetchInterval: 60000 // Refrescar cada minuto
+    refetchInterval: 60000
   })
 
-  if (isLoading) return (
+  const { data: hudData, isLoading: isHudLoading } = useQuery({
+    queryKey: ['project-hud-analytics', projectId],
+    queryFn: () => getHudAnalytics(projectId!),
+    enabled: !!projectId,
+    refetchInterval: 60000
+  })
+
+  if (isSummaryLoading || isHudLoading) return (
     <div className="h-[80vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-3">
         <Loader2 className="animate-spin text-cyan-400 w-4 h-4" />
@@ -29,159 +38,225 @@ export default function InsightsPage() {
     </div>
   )
 
-  const hasBurndown = data?.burndown && data.burndown.length > 0
+  const lastSnapshot = hudData && hudData.length > 0 ? hudData[hudData.length - 1] : null
 
   return (
-    <div className="h-[calc(100vh-48px)] overflow-hidden flex flex-col px-6 pt-4 pb-4 gap-4 bg-(--color-bg) text-white/40 select-none font-mono">
+    <div className="h-[calc(100vh-48px)] overflow-hidden flex flex-col px-6 pt-4 pb-4 gap-4 bg-(--color-bg) text-white/40 select-none font-mono relative">
       
-      {/* HEADER: OPERATIONS_ROOM_v1 */}
-      <header className="flex items-center justify-between shrink-0 border-b border-white/5 pb-4">
+      {/* HUD DECORATIONS */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-5">
+        <div className="absolute top-[10%] left-[-5%] w-[110%] h-px bg-cyan-500" />
+        <div className="absolute top-[90%] left-[-5%] w-[110%] h-px bg-cyan-500" />
+        <div className="absolute top-0 left-[10%] w-px h-full bg-cyan-500" />
+        <div className="absolute top-0 left-[90%] w-px h-full bg-cyan-500" />
+      </div>
+
+      {/* HEADER: OPERATIONS_ROOM_v2 */}
+      <header className="flex items-center justify-between shrink-0 border-b border-white/10 pb-4 relative z-10">
         <div className="flex flex-col">
            <h1 className="text-sm font-bold text-white uppercase tracking-[0.2em] flex items-center gap-2">
-             <Zap className="w-4 h-4 text-cyan-400" /> OPERATIONS_ROOM<span className="text-cyan-400">_v1.0</span>
+             <motion.div
+               animate={{ opacity: [1, 0.5, 1] }}
+               transition={{ duration: 0.1, repeat: Infinity, repeatDelay: 3 }}
+             >
+               <Zap className="w-4 h-4 text-cyan-400" />
+             </motion.div>
+             OPERATIONS_ROOM<span className="text-cyan-400">_HUD_v2.0</span>
            </h1>
-           <span className="text-[8px] opacity-30 mt-0.5 tracking-widest uppercase">
-             {data?.sprint_name || '// NARRATIVE_SCAN_ACTIVE'}
+           <span className="text-[8px] opacity-30 mt-0.5 tracking-widest uppercase flex items-center gap-2">
+              <Globe className="w-2 h-2" /> {summaryData?.sprint_name || '// NARRATIVE_SCAN_ACTIVE'} | LATENCY: 24ms
            </span>
         </div>
         
         {/* TOP STATS */}
         <div className="flex items-center gap-8">
            <div className="flex flex-col items-end">
-              <span className="text-[7px] text-cyan-400/50 uppercase tracking-[0.2em]">Team_Velocity</span>
-              <span className="text-xl font-bold text-white leading-none">{data?.velocity || 0}<span className="text-[8px] text-white/30 ml-1">pts/spr</span></span>
+              <span className="text-[7px] text-cyan-400/50 uppercase tracking-[0.2em]">Velocity_Avg</span>
+              <span className="text-xl font-bold text-white leading-none">
+                {lastSnapshot?.velocity || summaryData?.velocity || 0}
+                <span className="text-[8px] text-white/30 ml-1">pts/spr</span>
+              </span>
            </div>
            <div className="flex flex-col items-end">
-              <span className="text-[7px] text-amber-400/50 uppercase tracking-[0.2em]">Cycle_Time_Avg</span>
-              <span className="text-xl font-bold text-white leading-none">{data?.cycle_time || 0}<span className="text-[8px] text-white/30 ml-1">days</span></span>
+              <span className="text-[7px] text-amber-400/50 uppercase tracking-[0.2em]">Throughput</span>
+              <span className="text-xl font-bold text-white leading-none">
+                {lastSnapshot?.throughput || 0}
+                <span className="text-[8px] text-white/30 ml-1">tasks</span>
+              </span>
            </div>
            <div className="h-6 w-px bg-white/10" />
-           <div className="flex items-center gap-2 px-3 py-1.5 border border-cyan-500/20 bg-cyan-500/5">
-              <div className="w-1.5 h-1.5 bg-cyan-400 animate-pulse" />
-              <span className="text-[8px] text-cyan-400 uppercase tracking-widest font-bold">HEALTH: {data?.health_score || 0}%</span>
+           <div className="flex items-center gap-3 px-3 py-1.5 border border-cyan-500/20 bg-cyan-500/5">
+              <div className="relative">
+                <div className="w-1.5 h-1.5 bg-cyan-400" />
+                <div className="absolute -inset-1 bg-cyan-400 animate-ping opacity-20" />
+              </div>
+              <span className="text-[8px] text-cyan-400 uppercase tracking-widest font-bold">
+                SYSTEM_HEALTH: {summaryData?.health_score || 0}%
+              </span>
            </div>
         </div>
       </header>
 
       {/* TACTICAL GRID */}
-      <div className="flex-1 min-h-0 grid grid-cols-12 grid-rows-2 gap-4">
+      <div className="flex-1 min-h-0 grid grid-cols-12 grid-rows-2 gap-4 relative z-10">
         
-        {/* MAIN BURNDOWN (Top Left) */}
-        <section className="col-span-8 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/[0.01]">
-            <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/40" />
+        {/* FLOW METRICS HISTORY (Top Left) */}
+        <section className="col-span-8 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/[0.01] group overflow-hidden">
+            <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/40 group-hover:w-full transition-all duration-700" />
             <div className="flex items-center justify-between mb-4 shrink-0">
                 <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] flex items-center gap-2">
-                    <Activity className="w-3 h-3 text-cyan-400/60" /> SPRINT_BURN_RHYTHM
+                    <Activity className="w-3 h-3 text-cyan-400/60" /> FLOW_DYNAMICS_TIMELINE
                 </h2>
                 <div className="flex items-center gap-4 text-[7px] tracking-widest opacity-40">
-                   <div className="flex items-center gap-1"><div className="w-2 h-0.5 bg-cyan-400" /> ACTUAL</div>
-                   <div className="flex items-center gap-1"><div className="w-2 h-0.5 bg-white/20 border-t border-dashed" /> IDEAL</div>
+                   <div className="flex items-center gap-1"><div className="w-2 h-0.5 bg-cyan-400" /> VELOCITY</div>
+                   <div className="flex items-center gap-1"><div className="w-2 h-0.5 bg-emerald-400" /> EFFICIENCY</div>
                 </div>
             </div>
             <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                    {hasBurndown ? (
-                        <AreaChart data={data.burndown} margin={{ bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" vertical={false} />
-                            <Tooltip cursor={{ stroke: '#22d3ee20', strokeWidth: 1 }} contentStyle={{ background: '#000', border: '1px solid rgba(34,211,238,0.2)', fontSize: '9px', borderRadius: '0' }} />
-                            <Area type="monotone" dataKey="ideal" stroke="#ffffff" strokeDasharray="5 5" strokeWidth={1} fill="transparent" opacity={0.15} />
-                            <Area type="monotone" dataKey="remaining" stroke="#22d3ee" strokeWidth={2} fill="url(#colorCyan)" />
+                    {hudData && hudData.length > 0 ? (
+                        <AreaChart data={hudData} margin={{ bottom: 0, top: 10 }}>
                             <defs>
-                                <linearGradient id="colorCyan" x1="0" y1="0" x2="0" y2="1">
+                                <linearGradient id="colorVelocity" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.1}/>
                                     <stop offset="95%" stopColor="#22d3ee" stopOpacity={0}/>
                                 </linearGradient>
+                                <linearGradient id="colorEff" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
                             </defs>
+                            <XAxis dataKey="date" hide />
+                            <YAxis hide />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" vertical={false} />
+                            <Tooltip 
+                              cursor={{ stroke: '#22d3ee20', strokeWidth: 1 }} 
+                              contentStyle={{ background: '#000', border: '1px solid rgba(34,211,238,0.2)', fontSize: '9px', borderRadius: '0', color: '#fff' }}
+                            />
+                            <Area type="monotone" dataKey="velocity" stroke="#22d3ee" strokeWidth={1} fill="url(#colorVelocity)" fillOpacity={1} />
+                            <Area type="monotone" dataKey="flow_efficiency" stroke="#10b981" strokeWidth={1} fill="url(#colorEff)" fillOpacity={1} />
                         </AreaChart>
                     ) : (
                         <div className="h-full flex items-center justify-center border border-dashed border-white/5 bg-white/[0.02]">
-                            <span className="text-[9px] text-white/10 uppercase tracking-widest">Awaiting active sprint data...</span>
+                            <span className="text-[9px] text-white/10 uppercase tracking-widest">Compiling historical matrix...</span>
                         </div>
                     )}
                 </ResponsiveContainer>
             </div>
+            {/* HUD SCAN LINES */}
+            <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] z-20" style={{ backgroundSize: '100% 2px, 3px 100%' }} />
         </section>
 
-        {/* RESOURCE ALLOCATION (Top Right) */}
-        <section className="col-span-4 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/[0.01]">
-            <div className="absolute top-0 left-0 w-8 h-px bg-emerald-400/40" />
+        {/* RESOURCE LOAD MAP (Top Right) */}
+        <section className="col-span-4 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/[0.01] overflow-hidden group">
+            <div className="absolute top-0 left-0 w-8 h-px bg-emerald-400/40 group-hover:w-full transition-all duration-700" />
             <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-4 shrink-0 flex items-center gap-2">
-                <Users className="w-3 h-3 text-emerald-400/60" /> RESOURCE_LOAD
+                <Users className="w-3 h-3 text-emerald-400/60" /> RESOURCE_ALLOCATION_MATRIX
             </h2>
             <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data?.workload || []} layout="vertical">
+                    <BarChart data={summaryData?.workload || []} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" horizontal={false} />
                         <XAxis type="number" hide />
-                        <Bar dataKey="tasks" fill="#10b981" radius={[0, 2, 2, 0]} opacity={0.5} barSize={12} />
-                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ background: '#000', border: '1px solid rgba(16,185,129,0.2)', fontSize: '8px' }} />
+                        <YAxis dataKey="name" type="category" width={60} axisLine={false} tickLine={false} tick={{ fontSize: 6, fill: 'rgba(255,255,255,0.2)' }} />
+                        <Bar dataKey="tasks" fill="#10b981" radius={[0, 1, 1, 0]} opacity={0.4} barSize={10} />
+                        <Tooltip cursor={{ fill: 'rgba(16,185,129,0.05)' }} contentStyle={{ background: '#000', border: '1px solid rgba(16,185,129,0.2)', fontSize: '8px' }} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
+            <div className="mt-4 flex items-center justify-between text-[6px] tracking-widest text-white/10 uppercase">
+              <span>MEMBER_ID</span>
+              <span>UTILIZATION_CORE</span>
+            </div>
         </section>
 
-        {/* VELOCITY PREDICTOR (Bottom Left) */}
-        <section className="col-span-4 border border-white/5 p-5 flex flex-col justify-between relative bg-white/[0.01]">
-            <div className="absolute top-0 left-0 w-8 h-px bg-amber-400/40" />
+        {/* PREDICTIVE ANALYSIS (Bottom Left) */}
+        <section className="col-span-4 border border-white/5 p-5 flex flex-col justify-between relative bg-white/[0.01] group">
+            <div className="absolute top-0 left-0 w-8 h-px bg-amber-400/40 group-hover:w-full transition-all duration-700" />
             <div>
               <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-3 h-3 text-amber-400/60" /> VELOCITY_TREND
+                  <TrendingUp className="w-3 h-3 text-amber-400/60" /> PERFORMANCE_PROJECTION
               </h2>
               <div className="space-y-4">
                   <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                      <span className="text-[8px] text-white/20 uppercase">Baseline</span>
-                      <span className="text-xs text-white/80 font-bold">{data?.velocity || 0} PTS</span>
+                      <span className="text-[8px] text-white/20 uppercase flex items-center gap-1"><Target className="w-2 h-2" /> Cycle_Time_Target</span>
+                      <span className="text-xs text-white/80 font-bold">5.0d</span>
                   </div>
                   <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                      <span className="text-[8px] text-white/20 uppercase">Current_Sprint_Load</span>
-                      <span className="text-xs text-white/80 font-bold">14 PTS</span>
+                      <span className="text-[8px] text-white/20 uppercase">Current_Cycle_Avg</span>
+                      <span className="text-xs text-white/80 font-bold">{lastSnapshot?.cycle_time_avg?.toFixed(1) || summaryData?.cycle_time || 0}d</span>
                   </div>
-                  <div className="flex justify-between items-end border-b border-emerald-500/20 pb-2">
-                      <span className="text-[8px] text-emerald-400 uppercase">Projection</span>
-                      <span className="text-xs text-emerald-400 font-bold">OPTIMAL</span>
+                  <div className="flex justify-between items-end border-b border-cyan-500/20 pb-2">
+                      <span className="text-[8px] text-cyan-400 uppercase">Deviation</span>
+                      <span className="text-xs text-cyan-400 font-bold">
+                        {lastSnapshot?.cycle_time_avg ? (lastSnapshot.cycle_time_avg - 5.0).toFixed(1) : 0}d
+                      </span>
                   </div>
               </div>
             </div>
-            <div className="p-3 bg-emerald-500/5 border border-emerald-500/10">
-               <p className="text-[8px] text-emerald-400/80 leading-relaxed uppercase">
-                 EL EQUIPO ESTÁ OPERANDO AL 104% DE SU CAPACIDAD NOMINAL. PROPORCIÓN DE COMPLETITUD ESTIMADA: 98.2%.
+            <div className="p-3 bg-cyan-500/5 border border-cyan-500/10 relative overflow-hidden">
+               <motion.div 
+                 initial={{ x: '-100%' }}
+                 animate={{ x: '100%' }}
+                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                 className="absolute inset-0 bg-cyan-400/5 w-1/2 -skew-x-12"
+               />
+               <p className="text-[8px] text-cyan-400/80 leading-relaxed uppercase relative z-10">
+                 {'>'} AI_ADVISORY: BLOQUEO DETECTADO EN SECTOR_QC. LA VELOCIDAD DE FLUJO HA DISMINUIDO UN 12% EN LAS ÚLTIMAS 24H.
                </p>
             </div>
         </section>
 
-        {/* FLOW EFFICIENCY (Bottom Center) */}
+        {/* WORKLOAD DISTRIBUTION (Bottom Center) */}
         <section className="col-span-5 border border-white/5 p-5 flex flex-col relative bg-white/[0.01]">
-            <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/40" />
+            <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/40 group-hover:w-full transition-all duration-700" />
             <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
-                <Clock className="w-3 h-3 text-cyan-400/60" /> FLOW_EFFICIENCY
+                <Cpu className="w-3 h-3 text-cyan-400/60" /> WORKLOAD_DISTRIBUTION
             </h2>
-            <div className="flex-1 flex flex-col justify-center">
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="p-4 border border-white/5 bg-white/[0.02]">
-                      <span className="text-[7px] text-white/20 uppercase block mb-1">Queue_Time</span>
-                      <span className="text-lg font-bold text-white">{data?.cycle_time ? (data.cycle_time * 0.3).toFixed(1) : 0}d</span>
-                   </div>
-                   <div className="p-4 border border-white/5 bg-white/[0.02]">
-                      <span className="text-[7px] text-white/20 uppercase block mb-1">Dev_Time</span>
-                      <span className="text-lg font-bold text-white">{data?.cycle_time ? (data.cycle_time * 0.7).toFixed(1) : 0}d</span>
-                   </div>
-                </div>
+            <div className="flex-1 min-h-0">
+               <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={hudData}>
+                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" />
+                     <XAxis dataKey="date" hide />
+                     <YAxis hide />
+                     <Line type="stepAfter" dataKey="active_tasks_count" stroke="#22d3ee" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                     <Line type="stepAfter" dataKey="completed_tasks_count" stroke="#10b981" strokeWidth={2} dot={false} />
+                  </LineChart>
+               </ResponsiveContainer>
+            </div>
+            <div className="flex justify-between mt-2 px-2">
+               <div className="flex flex-col">
+                  <span className="text-[6px] text-white/20 uppercase">WIP_Limit</span>
+                  <span className="text-xs text-cyan-400 font-bold">{lastSnapshot?.active_tasks_count || 0}</span>
+               </div>
+               <div className="flex flex-col items-end">
+                  <span className="text-[6px] text-white/20 uppercase">Throughput_Total</span>
+                  <span className="text-xs text-emerald-400 font-bold">{lastSnapshot?.completed_tasks_count || 0}</span>
+               </div>
             </div>
         </section>
 
-        {/* SYSTEM STATUS (Bottom Right) */}
-        <section className="col-span-3 border border-cyan-500/10 p-5 flex flex-col justify-between relative bg-cyan-500/[0.02]">
-            <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/60" />
+        {/* SYSTEM CORES STATUS (Bottom Right) */}
+        <section className="col-span-3 border border-cyan-500/10 p-5 flex flex-col justify-between relative bg-cyan-500/[0.02] group">
+            <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/60 transition-all duration-700" />
             <div className="flex items-center gap-2 text-cyan-400 mb-4 text-[9px] font-bold uppercase tracking-[0.2em]">
-                <ShieldCheck className="w-3 h-3" /> SECURITY_STATUS
+                <ShieldCheck className="w-3 h-3" /> CORE_STABILITY
             </div>
             <div className="text-[8px] text-cyan-400/50 space-y-2 uppercase leading-tight">
-               <p>{'>'} BACKLINK_INTEGRITY: OK</p>
-               <p>{'>'} OPS_SCAN_ACTIVE</p>
-               <p>{'>'} NO_ANOMALIES_DETECTED</p>
+               <p className="flex justify-between"><span>DATABASE:</span> <span className="text-emerald-400">SYNC</span></p>
+               <p className="flex justify-between"><span>AI_ENGINE:</span> <span className="text-cyan-400">READY</span></p>
+               <p className="flex justify-between"><span>NETWORK:</span> <span className="text-emerald-400">10G_UP</span></p>
             </div>
-            <button className="w-full mt-4 py-2 border border-cyan-500/20 text-[8px] uppercase tracking-[0.3em] hover:bg-cyan-500/20 transition-all">
-                DEEP_SCAN_CORE
+            <div className="h-1 bg-white/5 mt-4 relative">
+               <motion.div 
+                 className="absolute h-full bg-cyan-400"
+                 initial={{ width: 0 }}
+                 animate={{ width: `${summaryData?.health_score || 0}%` }}
+                 transition={{ duration: 1.5, ease: 'easeOut' }}
+               />
+            </div>
+            <button className="w-full mt-4 py-2 bg-cyan-500/10 border border-cyan-500/20 text-[8px] uppercase tracking-[0.3em] hover:bg-cyan-500/30 hover:border-cyan-400 transition-all text-cyan-400 font-bold">
+                INITIATE_DEEP_SYNC
             </button>
         </section>
 

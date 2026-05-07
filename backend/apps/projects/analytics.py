@@ -98,6 +98,47 @@ class ProjectAnalytics:
             "health_score": self._calculate_health()
         }
 
+    def create_snapshot(self):
+        """Genera un snapshot del estado actual para el historial del HUD."""
+        from .models import ProjectMetricSnapshot
+        from apps.tasks.models import Task
+        
+        today = timezone.now().date()
+        
+        # Calcular Throughput (tareas en Done)
+        throughput = Task.objects.filter(
+            project=self.project,
+            column__name__icontains='done'
+        ).count()
+        
+        # Calcular Velocity (se usa la media de sprints)
+        velocity = self.get_velocity()
+        
+        # Calcular Cycle Time
+        cycle_time = self.get_cycle_time()
+        
+        # Conteo de tareas
+        active_tasks = Task.objects.filter(project=self.project).exclude(column__name__icontains='done').count()
+        completed_tasks = throughput
+        
+        # Estimar Eficiencia de Flujo (Dummy para esta fase)
+        # Ratio de tiempo en "In Progress" vs total
+        flow_efficiency = 70.0 # Placeholder
+        
+        snapshot, created = ProjectMetricSnapshot.objects.update_or_create(
+            project=self.project,
+            date=today,
+            defaults={
+                'velocity': velocity,
+                'throughput': throughput,
+                'cycle_time_avg': cycle_time,
+                'flow_efficiency': flow_efficiency,
+                'active_tasks_count': active_tasks,
+                'completed_tasks_count': completed_tasks
+            }
+        )
+        return snapshot
+
     def _calculate_health(self):
         # Lógica dummy de salud del proyecto
         return 85 

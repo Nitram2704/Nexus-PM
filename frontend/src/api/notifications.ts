@@ -12,10 +12,10 @@ export interface Notification {
 }
 
 export const getNotificationsApi = () => 
-  apiClient.get<Notification[]>('/notifications/').then(r => r.data)
+  apiClient.get<Notification[]>('/v1/notifications/').then(r => r.data)
 
 export const markNotificationAsReadApi = (id: string) => 
-  apiClient.post(`/notifications/${id}/read/`).then(r => r.data)
+  apiClient.post(`/v1/notifications/${id}/read/`).then(r => r.data)
 
 export const markAllNotificationsAsReadApi = () => 
-  apiClient.post('/notifications/mark-all-read/').then(r => r.data)
+  apiClient.post('/v1/notifications/mark-all-read/').then(r => r.data)
