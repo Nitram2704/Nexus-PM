@@ -11,7 +11,7 @@ class ProjectAnalytics:
     def get_velocity(self):
         """Calcula la velocidad media de los últimos 3 sprints cerrados."""
         closed_sprints = self.project.sprints.filter(
-            status='closed'
+            status='completed' # Sprint status is 'completed'
         ).order_by('-end_date')[:3]
         
         if not closed_sprints.exists():
@@ -19,7 +19,7 @@ class ProjectAnalytics:
             
         total_points = Task.objects.filter(
             sprint__in=closed_sprints,
-            column__name__icontains='done' # Asumiendo que 'done' es el estado final
+            column__is_done_column=True
         ).aggregate(Sum('story_points'))['story_points__sum'] or 0
         
         return round(total_points / closed_sprints.count(), 1)
@@ -51,7 +51,7 @@ class ProjectAnalytics:
             burned_today = Task.objects.filter(
                 sprint=active_sprint,
                 updated_at__date=current_date,
-                column__name__icontains='done'
+                column__is_done_column=True
             ).aggregate(Sum('story_points'))['story_points__sum'] or 0
             
             current_points -= burned_today
@@ -71,9 +71,8 @@ class ProjectAnalytics:
         """Tiempo medio de ciclo (de creación a completado)."""
         tasks = Task.objects.filter(
             project=self.project,
-            column__name__icontains='done',
-            created_at__isnull=False,
-            updated_at__isnull=False
+            column__is_done_column=True,
+            created_at__isnull=False
         )
         
         if not tasks.exists():
@@ -82,13 +81,14 @@ class ProjectAnalytics:
         total_seconds = 0
         count = 0
         for task in tasks:
-            # Una aproximación simple: tiempo entre creación y última actualización en Done
-            delta = task.updated_at - task.created_at
+            # Preferimos completed_at para precisión
+            end_time = task.completed_at or task.updated_at
+            delta = end_time - task.created_at
             total_seconds += delta.total_seconds()
             count += 1
             
         avg_days = (total_seconds / count) / 86400 if count > 0 else 0
-        return round(avg_days, 1)
+        return round(max(0, avg_days), 1)
 
     def get_summary(self):
         return {
@@ -108,7 +108,7 @@ class ProjectAnalytics:
         # Calcular Throughput (tareas en Done)
         throughput = Task.objects.filter(
             project=self.project,
-            column__name__icontains='done'
+            column__is_done_column=True
         ).count()
         
         # Calcular Velocity (se usa la media de sprints)

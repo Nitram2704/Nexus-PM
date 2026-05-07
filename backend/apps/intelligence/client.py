@@ -1,7 +1,8 @@
 import json
 import os
 from decouple import config
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from django.conf import settings
 
 class BacklogAIClient:
@@ -15,12 +16,11 @@ class BacklogAIClient:
             self.is_mock = True
         else:
             try:
-                genai.configure(api_key=self.api_key)
+                self.client = genai.Client(api_key=self.api_key)
                 self.model_name = 'gemma-4-26b-a4b-it'
-                self.model = genai.GenerativeModel(self.model_name)
                 self.is_mock = False
             except Exception as e:
-                print(f"Error configurando Gemini: {e}")
+                print(f"Error configurando Gemini v2: {e}")
                 self.is_mock = True
 
     def generate_backlog(self, project_description):
@@ -34,15 +34,16 @@ class BacklogAIClient:
         """
         
         try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(response_mime_type="application/json")
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json")
             )
             return json.loads(response.text)
         except Exception as e:
-            print(f"Error con JSON mode en backlog: {e}. Intentando parseo manual...")
+            print(f"Error con JSON mode v2 en backlog: {e}. Intentando parseo manual...")
             try:
-                response = self.model.generate_content(prompt)
+                response = self.client.models.generate_content(model=self.model_name, contents=prompt)
                 text = response.text
                 if "```json" in text:
                     text = text.split("```json")[1].split("```")[0]
@@ -50,7 +51,7 @@ class BacklogAIClient:
                     text = text.split("```")[1].split("```")[0]
                 return json.loads(text.strip())
             except Exception as e2:
-                print(f"Error final en backlog: {e2}")
+                print(f"Error final v2 en backlog: {e2}")
                 return self._get_mock_backlog(project_description)
 
     def generate_user_stories(self, requirement):
@@ -64,15 +65,16 @@ class BacklogAIClient:
         """
         
         try:
-            response = self.model.generate_content(
-                prompt,
-                generation_config=genai.GenerationConfig(response_mime_type="application/json")
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json")
             )
             return json.loads(response.text)
         except Exception as e:
-            print(f"Error con JSON mode en historias: {e}. Intentando parseo manual...")
+            print(f"Error con JSON mode v2 en historias: {e}. Intentando parseo manual...")
             try:
-                response = self.model.generate_content(prompt)
+                response = self.client.models.generate_content(model=self.model_name, contents=prompt)
                 text = response.text
                 if "```json" in text:
                     text = text.split("```json")[1].split("```")[0]
@@ -80,7 +82,7 @@ class BacklogAIClient:
                     text = text.split("```")[1].split("```")[0]
                 return json.loads(text.strip())
             except Exception as e2:
-                print(f"Error final en historias: {e2}")
+                print(f"Error final v2 en historias: {e2}")
                 return self._get_mock_stories(requirement)
 
 
@@ -114,13 +116,13 @@ class BacklogAIClient:
         """
         
         try:
-            # Combinamos el sistema y el mensaje (Gemini 1.5 style)
-            response = self.model.generate_content(
-                f"{system_prompt}\n\nMensaje del usuario: {message}"
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=f"{system_prompt}\n\nMensaje del usuario: {message}"
             )
             return response.text
         except Exception as e:
-            print(f"Error en chat AI: {e}")
+            print(f"Error en chat AI v2: {e}")
             return "Lo siento, tuve un problema procesando tu solicitud tactical."
 
     def _get_mock_stories(self, requirement):

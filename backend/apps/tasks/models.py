@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from apps.projects.models import Project, Column
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 import uuid
 
 class Sprint(models.Model):
@@ -93,8 +94,16 @@ class Task(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     order = models.PositiveIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if self.column and self.column.is_done_column and not self.completed_at:
+            self.completed_at = timezone.now()
+        elif self.column and not self.column.is_done_column:
+            self.completed_at = None
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['order', '-created_at']
