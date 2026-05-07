@@ -9,6 +9,7 @@ from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage
 from .serializers import GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer, ChatInputSerializer
 from .client import BacklogAIClient
 from .agents.orchestrator import AgentOrchestrator
+from .foresight import ForesightEngine
 from apps.tasks.models import Task
 from apps.notifications.models import Notification
 import threading
@@ -303,4 +304,19 @@ class OrchestrateEpicView(views.APIView):
         thread.start()
 
         return response.Response({"message": "Orchestration started. You will be notified when complete."}, status=status.HTTP_202_ACCEPTED)
+
+class ForesightView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        engine = ForesightEngine(project)
+        foresight_data = engine.get_sprint_foresight()
+        
+        # Generar recomendación de IA si el riesgo es alto o si el usuario lo solicita implícitamente
+        ai_client = BacklogAIClient()
+        recommendation = ai_client.get_foresight_recommendation(foresight_data)
+        foresight_data['ai_recommendation'] = recommendation
+
+        return response.Response(foresight_data)
 

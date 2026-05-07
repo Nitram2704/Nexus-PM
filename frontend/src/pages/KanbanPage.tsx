@@ -20,6 +20,8 @@ import {
 } from '@/api/columns'
 import { ConfirmDialog } from '@/components/kanban/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
+import { RiskBadge } from '@/components/feedback/RiskBadge'
+import { ForesightPanel } from '@/components/kanban/ForesightPanel'
 
 export function KanbanPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -287,9 +289,12 @@ export function KanbanPage() {
           <h1 className="kanban-project-title">{project?.name || 'Cargando...'}</h1>
           <span className="kanban-project-key">{project?.key}</span>
           {activeSprint && (
-            <div className="active-sprint-badge">
-              <span className="dot"></span>
-              {activeSprint.name}
+            <div className="flex items-center gap-2">
+              <div className="active-sprint-badge">
+                <span className="dot"></span>
+                {activeSprint.name}
+              </div>
+              <RiskBadge />
             </div>
           )}
         </div>
@@ -322,6 +327,7 @@ export function KanbanPage() {
 
       {activeSprint && (
         <main className="kanban-board-container">
+          <ForesightPanel />
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="kanban-board">
               {boardColumns.map((column) => (

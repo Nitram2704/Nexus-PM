@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     GenerateBacklogView, ImportProposalView, GenerateUserStoriesView,
-    ChatView, ChatHistoryView, OrchestrateEpicView
+    ChatView, ChatHistoryView, OrchestrateEpicView, ForesightView
 )
 
 urlpatterns = [
@@ -11,4 +11,5 @@ urlpatterns = [
     path('projects/<uuid:project_id>/ai/chat/', ChatView.as_view(), name='ai-chat'),
     path('projects/<uuid:project_id>/ai/chat/history/', ChatHistoryView.as_view(), name='ai-chat-history'),
     path('projects/<uuid:project_id>/ai/orchestrate/', OrchestrateEpicView.as_view(), name='ai-orchestrate-epic'),
+    path('projects/<uuid:project_id>/ai/foresight/', ForesightView.as_view(), name='ai-foresight'),
 ]

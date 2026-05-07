@@ -141,3 +141,32 @@ class BacklogAIClient:
 
     def _get_mock_backlog(self, description):
         return [{"epic": "Autenticación (Fallback)", "items": [{"title": "Login", "description": "d", "type": "feature", "priority": "high"}]}]
+
+    def get_foresight_recommendation(self, foresight_data):
+        """
+        Genera una recomendación táctica basada en el análisis de riesgo actual.
+        """
+        if self.is_mock:
+            risk = foresight_data.get('risk_level', 'low')
+            if risk in ['high', 'critical']:
+                return "Recomendación: Peligro de incumplimiento. Sugiere mover tareas del backlog a 'Planning' o aumentar el equipo."
+            return "Recomendación: El equipo mantiene un buen ritmo. No se requieren ajustes inmediatos."
+            
+        prompt = f"""
+        Analiza los siguientes datos de riesgo de un Sprint de desarrollo:
+        {json.dumps(foresight_data)}
+        
+        Genera una recomendación de 1 o 2 frases máximo para el Scrum Master.
+        Sé táctico, directo y profesional. Usa el nombre/email de los miembros si están sobrecargados.
+        Responde en español.
+        """
+        
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            return response.text.strip()
+        except Exception as e:
+            print(f"Error en foresight recommendation AI: {e}")
+            return "Analiza manualmente la carga; el motor de sugerencias temporalmente no disponible."
