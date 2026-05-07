@@ -101,7 +101,7 @@ export default function InsightsPage() {
       <div className="flex-1 min-h-0 grid grid-cols-12 grid-rows-2 gap-4 relative z-10">
         
         {/* FLOW METRICS HISTORY (Top Left) */}
-        <section className="col-span-8 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/[0.01] group overflow-hidden">
+        <section className="col-span-8 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/1 group overflow-hidden">
             <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/40 group-hover:w-full transition-all duration-700" />
             <div className="flex items-center justify-between mb-4 shrink-0">
                 <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] flex items-center gap-2">
@@ -137,7 +137,7 @@ export default function InsightsPage() {
                             <Area type="monotone" dataKey="flow_efficiency" stroke="#10b981" strokeWidth={1} fill="url(#colorEff)" fillOpacity={1} />
                         </AreaChart>
                     ) : (
-                        <div className="h-full flex items-center justify-center border border-dashed border-white/5 bg-white/[0.02]">
+                        <div className="h-full flex items-center justify-center border border-dashed border-white/5 bg-white/2">
                             <span className="text-[9px] text-white/10 uppercase tracking-widest">Compiling historical matrix...</span>
                         </div>
                     )}
@@ -148,7 +148,7 @@ export default function InsightsPage() {
         </section>
 
         {/* RESOURCE LOAD MAP (Top Right) */}
-        <section className="col-span-4 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/[0.01] overflow-hidden group">
+        <section className="col-span-4 border border-white/5 p-5 flex flex-col min-h-0 relative bg-white/1 overflow-hidden group">
             <div className="absolute top-0 left-0 w-8 h-px bg-emerald-400/40 group-hover:w-full transition-all duration-700" />
             <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-4 shrink-0 flex items-center gap-2">
                 <Users className="w-3 h-3 text-emerald-400/60" /> RESOURCE_ALLOCATION_MATRIX
@@ -171,7 +171,7 @@ export default function InsightsPage() {
         </section>
 
         {/* PREDICTIVE ANALYSIS (Bottom Left) */}
-        <section className="col-span-4 border border-white/5 p-5 flex flex-col justify-between relative bg-white/[0.01] group">
+        <section className="col-span-4 border border-white/5 p-5 flex flex-col justify-between relative bg-white/1 group">
             <div className="absolute top-0 left-0 w-8 h-px bg-amber-400/40 group-hover:w-full transition-all duration-700" />
             <div>
               <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
@@ -208,7 +208,7 @@ export default function InsightsPage() {
         </section>
 
         {/* WORKLOAD DISTRIBUTION (Bottom Center) */}
-        <section className="col-span-5 border border-white/5 p-5 flex flex-col relative bg-white/[0.01]">
+        <section className="col-span-5 border border-white/5 p-5 flex flex-col relative bg-white/1">
             <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/40 group-hover:w-full transition-all duration-700" />
             <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-4 flex items-center gap-2">
                 <Cpu className="w-3 h-3 text-cyan-400/60" /> WORKLOAD_DISTRIBUTION
@@ -237,7 +237,7 @@ export default function InsightsPage() {
         </section>
 
         {/* SYSTEM CORES STATUS (Bottom Right) */}
-        <section className="col-span-3 border border-cyan-500/10 p-5 flex flex-col justify-between relative bg-cyan-500/[0.02] group">
+        <section className="col-span-3 border border-cyan-500/10 p-5 flex flex-col justify-between relative bg-cyan-500/2 group">
             <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/60 transition-all duration-700" />
             <div className="flex items-center gap-2 text-cyan-400 mb-4 text-[9px] font-bold uppercase tracking-[0.2em]">
                 <ShieldCheck className="w-3 h-3" /> CORE_STABILITY

@@ -40,7 +40,7 @@ export function Navbar() {
 
         {isProjectSection && activeProject && (
           <>
-            <div className="w-2 h-[1px] bg-white/20 mx-2" />
+            <div className="w-2 h-px bg-white/20 mx-2" />
             <Link
               to={`/project/${activeProject.id}/kanban`}
               className="hover:text-cyan-400 transition-colors truncate max-w-[150px] sm:max-w-[200px]"
@@ -53,7 +53,7 @@ export function Navbar() {
 
         {isProjectSection && (isKanban || isBacklog || isInsights) && (
           <>
-            <div className="w-2 h-[1px] bg-white/20 mx-2" />
+            <div className="w-2 h-px bg-white/20 mx-2" />
             <div className="flex items-center gap-1 border-l border-white/10 pl-3">
               <Link
                 to={`/project/${projectId}/kanban`}

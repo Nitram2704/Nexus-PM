@@ -1,27 +1,27 @@
 import { useState, useEffect } from 'react'
 import { Bell, CheckCheck, Inbox } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  getNotificationsApi, 
-  markNotificationAsReadApi, 
-  markAllNotificationsAsReadApi, 
-  type Notification 
-} from '@/api/notifications'
+
 import { Link } from 'react-router-dom'
+import { useNotificationStore } from '@/store/notificationStore'
 
 export function NotificationBell() {
-  const [notifications, setNotifications] = useState<Notification[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-
-  const unreadCount = notifications.filter(n => !n.is_read).length
+  
+  const { 
+    notifications, 
+    unreadCount, 
+    fetchInitial, 
+    connectSSE, 
+    markAsRead, 
+    markAllRead 
+  } = useNotificationStore()
 
   const fetchNotifications = async () => {
     try {
-      const data = await getNotificationsApi()
-      setNotifications(data)
-    } catch (error) {
-      console.error('Failed to fetch notifications', error)
+      await fetchInitial()
+      connectSSE()
     } finally {
       setLoading(false)
     }
@@ -29,27 +29,14 @@ export function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications()
-    // Poll every 30 seconds for simple "real-time"
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
   }, [])
 
   const handleMarkRead = async (id: string) => {
-    try {
-      await markNotificationAsReadApi(id)
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
-    } catch (err) {
-      console.error(err)
-    }
+    await markAsRead(id)
   }
 
   const handleMarkAllRead = async () => {
-    try {
-      await markAllNotificationsAsReadApi()
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-    } catch (err) {
-      console.error(err)
-    }
+    await markAllRead()
   }
 
   return (
@@ -82,7 +69,7 @@ export function NotificationBell() {
               className="absolute right-0 mt-3 w-72 bg-black/80 backdrop-blur-2xl border border-white/10 z-50 shadow-2xl overflow-hidden"
             >
               {/* Header */}
-              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-white/2">
                 <h3 className="text-[9px] font-bold tracking-widest text-white flex items-center gap-2">
                    <div className="w-1 h-1 bg-cyan-400"></div>
                    INTERNAL_COMMS // PULSE
@@ -115,12 +102,12 @@ export function NotificationBell() {
                     {notifications.map((n) => (
                       <div 
                         key={n.id}
-                        className={`group px-4 py-3 transition-colors hover:bg-white/[0.03] relative ${
-                          !n.is_read ? 'bg-cyan-500/[0.02]' : ''
+                        className={`group px-4 py-3 transition-colors hover:bg-white/3 relative ${
+                          !n.is_read ? 'bg-cyan-500/2' : ''
                         }`}
                       >
                         {!n.is_read && (
-                           <div className="absolute top-0 left-0 w-[1px] h-full bg-cyan-500"></div>
+                           <div className="absolute top-0 left-0 w-px h-full bg-cyan-500"></div>
                         )}
                         
                         <div className="flex flex-col gap-1">
@@ -131,7 +118,7 @@ export function NotificationBell() {
                               {n.title}
                             </span>
                             <span className="text-[7px] text-white/20 font-mono">
-                              {n.created_at_human}
+                              {n.created_at ? new Date(n.created_at).toLocaleTimeString() : ''}
                             </span>
                           </div>
                           <p className="text-[10px] text-white/60 leading-tight">
@@ -165,7 +152,7 @@ export function NotificationBell() {
               </div>
 
               {/* View All */}
-              <div className="px-4 py-2 border-t border-white/10 bg-white/[0.01]">
+              <div className="px-4 py-2 border-t border-white/10 bg-white/1">
                  <button className="w-full text-center text-[7px] text-white/20 hover:text-white uppercase tracking-[0.2em] font-mono transition-colors py-1">
                     Load_Encrypted_Archives
                  </button>

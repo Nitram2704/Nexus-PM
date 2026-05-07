@@ -2,6 +2,10 @@ from rest_framework import views, response, status
 from rest_framework.permissions import IsAuthenticated
 from .models import Notification
 from .serializers import NotificationSerializer
+from django.http import StreamingHttpResponse
+from django.utils import timezone
+import time
+import json
 
 class NotificationListView(views.APIView):
     permission_classes = [IsAuthenticated]
@@ -30,3 +34,25 @@ class NotificationBulkReadView(views.APIView):
     def post(self, request):
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return response.Response({'status': 'all_read'})
+
+class NotificationStreamView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        def event_stream():
+            yield 'data: {"status": "connected"}\n\n'
+            last_check = timezone.now()
+            while True:
+                time.sleep(2)
+                now = timezone.now()
+                # Check for new notifications
+                new_nots = Notification.objects.filter(user=request.user, created_at__gt=last_check)
+                if new_nots.exists():
+                    serializer = NotificationSerializer(new_nots, many=True)
+                    yield f"data: {json.dumps(serializer.data)}\n\n"
+                last_check = now
+
+        resp = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+        resp['Cache-Control'] = 'no-cache'
+        resp['X-Accel-Buffering'] = 'no'
+        return resp
