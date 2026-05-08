@@ -19,7 +19,8 @@ class ColumnSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Column
-        fields = ['id', 'name', 'position', 'is_done_column', 'tasks']
+        fields = ['id', 'name', 'position', 'is_done_column', 'tasks', 'project']
+        extra_kwargs = {'project': {'write_only': True}}
 
     def get_tasks(self, obj):
         # Evitamos importación circular importando aquí

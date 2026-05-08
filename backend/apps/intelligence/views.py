@@ -1,12 +1,12 @@
 from rest_framework import views, status, response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from apps.projects.models import Project
-from apps.projects.permissions import IsProjectMember
+from ..projects.models import Project
+from ..projects.permissions import IsProjectMember
 from .models import AIProposal, AIGenerationLog, Recommendation
 from .serializers import GenerateBacklogSerializer, AIProposalSerializer, RecommendationSerializer
 from .client import BacklogAIClient
-from apps.tasks.models import Task
+from ..tasks.models import Task
 
 class GenerateBacklogView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]

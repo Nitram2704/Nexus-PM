@@ -105,7 +105,7 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
               <button 
                 className="dropdown-item dropdown-item--danger" 
                 onClick={() => { onDelete(); setIsOpen(false); }}
-                disabled={column.is_done_column || isLoading}
+                disabled={column.is_done_column || column.tasks?.length > 0 || isLoading}
               >
                 <Trash2 size={14} /> <span>Eliminar columna</span>
               </button>

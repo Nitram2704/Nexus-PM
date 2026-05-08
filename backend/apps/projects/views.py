@@ -84,6 +84,32 @@ class ProjectViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'])
+    def reorder_columns(self, request, pk=None):
+        """
+        Reordena las columnas del proyecto.
+        Recibe una lista de IDs de columnas en el orden deseado.
+        """
+        project = self.get_object()
+        column_ids = request.data.get('column_ids', [])
+        
+        if not isinstance(column_ids, list):
+            return Response({"error": "column_ids debe ser una lista."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from django.db import transaction
+        from .models import Column
+        
+        with transaction.atomic():
+            for idx, col_id in enumerate(column_ids):
+                try:
+                    column = Column.objects.get(id=col_id, project=project)
+                    column.position = idx
+                    column.save()
+                except Column.DoesNotExist:
+                    continue
+                    
+        return Response({"message": "Columnas reordenadas exitosamente."}, status=status.HTTP_200_OK)
+
 
 class ColumnViewSet(viewsets.ModelViewSet):
     """
@@ -95,6 +121,17 @@ class ColumnViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Column.objects.filter(project__members__user=self.request.user)
+
+    def perform_create(self, serializer):
+        project = serializer.validated_data['project']
+        position = project.columns.count()
+        serializer.save(position=position)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.tasks.exists():
+            return Response({"error": "No se puede eliminar una columna con tareas activas."}, status=status.HTTP_400_BAD_REQUEST)
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=True, methods=['post'])
     def clear_tasks(self, request, pk=None):

@@ -15,3 +15,9 @@ export const deleteColumnApi = (columnId: string) =>
 export const reorderTasksApi = (columnId: string, taskIds: string[]) =>
   apiClient.post(`/v1/columns/${columnId}/reorder_tasks/`, { task_ids: taskIds })
 
+export const createColumnApi = (projectId: string, name: string) =>
+  apiClient.post(`/v1/columns/`, { project: projectId, name })
+
+export const reorderColumnsApi = (projectId: string, columnIds: string[]) =>
+  apiClient.post(`/v1/projects/${projectId}/reorder_columns/`, { column_ids: columnIds })
+

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Sparkles, Loader2, Check, Plus, AlertCircle } from 'lucide-react'
+import { Sparkles, Loader2, Check, Plus } from 'lucide-react'
 import { generateBacklogApi, importProposalApi, type AIProposal } from '@/api/ai'
 import toast from 'react-hot-toast'
 
@@ -45,7 +45,7 @@ export function BacklogGenerator({ projectId, onImported }: BacklogGeneratorProp
 
         setIsImporting(true)
         try {
-            await importProposalApi(projectId, proposal.id, selectedIndices)
+            await importProposalApi(projectId, proposal.id, selectedIndices.map(String))
             toast.success(`${selectedIndices.length} tareas importadas al backlog`)
             setProposal(null)
             setDescription('')

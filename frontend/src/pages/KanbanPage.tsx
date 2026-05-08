@@ -18,7 +18,9 @@ import {
   clearColumnTasksApi, 
   moveAllTasksApi, 
   deleteColumnApi,
-  reorderTasksApi
+  reorderTasksApi,
+  createColumnApi,
+  reorderColumnsApi
 } from '@/api/columns'
 import { ConfirmDialog } from '@/components/kanban/ConfirmDialog'
 import { supabase } from '@/lib/supabase'
@@ -37,6 +39,11 @@ export function KanbanPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false)
+  
+  // New Column States
+  const [isAddingColumn, setIsAddingColumn] = useState(false)
+  const [newColumnName, setNewColumnName] = useState('')
+  const [isCreatingColumn, setIsCreatingColumn] = useState(false)
   
   // States for Actions and Confirmations
   const [busyColumnId, setBusyColumnId] = useState<string | null>(null)
@@ -130,6 +137,22 @@ export function KanbanPage() {
     }
   }
 
+  const handleCreateColumn = async () => {
+    if (!newColumnName.trim() || !project) return
+    setIsCreatingColumn(true)
+    try {
+      await createColumnApi(project.id, newColumnName.trim())
+      setNewColumnName('')
+      setIsAddingColumn(false)
+      toast.success('Columna creada')
+      loadProject() // Refresh to get the new column with its tasks field initialized
+    } catch (err) {
+      toast.error('Error al crear columna')
+    } finally {
+      setIsCreatingColumn(false)
+    }
+  }
+
   const loadProject = async () => {
     if (!projectId) return
     try {
@@ -151,10 +174,29 @@ export function KanbanPage() {
   useEffect(() => () => { setActiveProject(null) }, [])
 
   const onDragEnd = async (result: DropResult) => {
-    const { destination, source } = result
+    const { destination, source, type } = result
 
     if (!destination) return
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
+
+    // Handle Column Reordering
+    if (type === 'column') {
+      if (!project) return
+      
+      const newColumns = Array.from(project.columns)
+      const [movedColumn] = newColumns.splice(source.index, 1)
+      newColumns.splice(destination.index, 0, movedColumn)
+      
+      setProject({ ...project, columns: newColumns })
+      
+      try {
+        await reorderColumnsApi(project.id, newColumns.map(c => c.id))
+      } catch (err) {
+        toast.error('Error al reordenar columnas')
+        loadProject() // Rollback
+      }
+      return
+    }
 
     // Optimistic UI update
     const sourceCol = project?.columns.find(c => c.id === source.droppableId)
@@ -341,141 +383,202 @@ export function KanbanPage() {
       {activeSprint && (
         <main className="kanban-board-container">
           <DragDropContext onDragEnd={onDragEnd}>
-            <div className="kanban-board">
-              {boardColumns.map((column) => (
-              <div key={column.id} className="kanban-column">
-                <div className="column-header">
-                  <h3 className="column-title">
-                    {column.name}
-                    <span className="column-count">{column.tasks.length}</span>
-                  </h3>
-                  <ColumnMenu 
-                    column={column}
-                    otherColumns={boardColumns.filter(c => c.id !== column.id)}
-                    isLoading={busyColumnId === column.id}
-                    onRename={(newName) => handleRenameColumn(column.id, newName)}
-                    onClear={() => setConfirmConfig({
-                      isOpen: true,
-                      type: 'clear',
-                      columnId: column.id,
-                      columnName: column.name
-                    })}
-                    onMoveAll={(targetId) => {
-                      const target = project?.columns.find(c => c.id === targetId)
-                      setConfirmConfig({
-                        isOpen: true,
-                        type: 'move_all',
-                        columnId: column.id,
-                        targetColumnId: targetId,
-                        columnName: column.name,
-                        targetColumnName: target?.name || 'otra columna'
-                      })
-                    }}
-                    onDelete={() => setConfirmConfig({
-                      isOpen: true,
-                      type: 'delete',
-                      columnId: column.id,
-                      columnName: column.name
-                    })}
-                  />
-                </div>
+            <Droppable droppableId="all-columns" direction="horizontal" type="column">
+              {(provided) => (
+                <div 
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="kanban-board"
+                >
+                  {boardColumns.map((column, index) => (
+                    <Draggable key={column.id} draggableId={column.id} index={index}>
+                      {(provided, snapshot) => (
+                        <div 
+                          {...provided.draggableProps}
+                          ref={provided.innerRef}
+                          className={`kanban-column ${snapshot.isDragging ? 'kanban-column--dragging' : ''}`}
+                        >
+                          <div className="column-header" {...provided.dragHandleProps}>
+                            <h3 className="column-title">
+                              {column.name}
+                              <span className="column-count">{column.tasks.length}</span>
+                            </h3>
+                            <ColumnMenu 
+                              column={column}
+                              otherColumns={boardColumns.filter(c => c.id !== column.id)}
+                              isLoading={busyColumnId === column.id}
+                              onRename={(newName) => handleRenameColumn(column.id, newName)}
+                              onClear={() => setConfirmConfig({
+                                isOpen: true,
+                                type: 'clear',
+                                columnId: column.id,
+                                columnName: column.name
+                              })}
+                              onMoveAll={(targetId) => {
+                                const target = project?.columns.find(c => c.id === targetId)
+                                setConfirmConfig({
+                                  isOpen: true,
+                                  type: 'move_all',
+                                  columnId: column.id,
+                                  targetColumnId: targetId,
+                                  columnName: column.name,
+                                  targetColumnName: target?.name || 'otra columna'
+                                })
+                              }}
+                              onDelete={() => setConfirmConfig({
+                                isOpen: true,
+                                type: 'delete',
+                                columnId: column.id,
+                                columnName: column.name
+                              })}
+                            />
+                          </div>
 
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      {...provided.droppableProps}
-                      ref={provided.innerRef}
-                      className={`column-content ${snapshot.isDraggingOver ? 'column-content--active' : ''}`}
-                    >
-                      {column.tasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`task-card ${snapshot.isDragging ? 'task-card--dragging' : ''}`}
-                              onClick={() => setSelectedTask(task)}
-                            >
-                              <div className="task-priority-tag" data-priority={task.priority}>
-                                {task.priority}
-                              </div>
-                              <h4 className="task-title">{task.title}</h4>
-                              <div className="task-footer">
-                                <div className="task-meta">
-                                  <span className="task-id">{task.key}</span>
-                                </div>
-                                <div className="task-assignee">
-                                  <div className="assignee-avatar">
-                                    <User size={12} />
+                          <Droppable droppableId={column.id} type="task">
+                            {(provided, snapshot) => (
+                              <div
+                                {...provided.droppableProps}
+                                ref={provided.innerRef}
+                                className={`column-content ${snapshot.isDraggingOver ? 'column-content--active' : ''}`}
+                              >
+                                {column.tasks.map((task, index) => (
+                                  <Draggable key={task.id} draggableId={task.id} index={index}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={`task-card ${snapshot.isDragging ? 'task-card--dragging' : ''}`}
+                                        onClick={() => setSelectedTask(task)}
+                                      >
+                                        <div className="task-priority-tag" data-priority={task.priority}>
+                                          {task.priority}
+                                        </div>
+                                        <h4 className="task-title">{task.title}</h4>
+                                        <div className="task-footer">
+                                          <div className="task-meta">
+                                            <span className="task-id">{task.key}</span>
+                                          </div>
+                                          <div className="task-assignee">
+                                            <div className="assignee-avatar">
+                                              <User size={12} />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                                {provided.placeholder}
+
+                                {addingTaskToColumn === column.id && (
+                                  <div className="add-task-inline">
+                                    <input
+                                      autoFocus
+                                      type="text"
+                                      placeholder="¿Qué hay que hacer?"
+                                      value={newTaskTitle}
+                                      onChange={e => setNewTaskTitle(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') handleCreateTask(column.id)
+                                        if (e.key === 'Escape') {
+                                          setAddingTaskToColumn(null)
+                                          setNewTaskTitle('')
+                                        }
+                                      }}
+                                      disabled={isCreating}
+                                      className="add-task-input"
+                                    />
+                                    <div className="add-task-actions">
+                                      <button 
+                                        className="btn-primary btn-sm"
+                                        onClick={() => handleCreateTask(column.id)}
+                                        disabled={isCreating || !newTaskTitle.trim()}
+                                      >
+                                        {isCreating ? 'Guardando...' : 'Añadir'}
+                                      </button>
+                                      <button 
+                                        className="btn-icon"
+                                        onClick={() => {
+                                          setAddingTaskToColumn(null)
+                                          setNewTaskTitle('')
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </div>
+                            )}
+                          </Droppable>
+
+                          {addingTaskToColumn !== column.id && (
+                            <div className="column-footer">
+                              <button 
+                                className="btn-add-inline"
+                                onClick={() => {
+                                  setAddingTaskToColumn(column.id)
+                                  setNewTaskTitle('')
+                                }}
+                              >
+                                <Plus size={16} /> Añadir tarea
+                              </button>
                             </div>
                           )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-
-                      {addingTaskToColumn === column.id && (
-                        <div className="add-task-inline">
-                          <input
-                            autoFocus
-                            type="text"
-                            placeholder="¿Qué hay que hacer?"
-                            value={newTaskTitle}
-                            onChange={e => setNewTaskTitle(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') handleCreateTask(column.id)
-                              if (e.key === 'Escape') {
-                                setAddingTaskToColumn(null)
-                                setNewTaskTitle('')
-                              }
-                            }}
-                            disabled={isCreating}
-                            className="add-task-input"
-                          />
-                          <div className="add-task-actions">
-                            <button 
-                              className="btn-primary btn-sm"
-                              onClick={() => handleCreateTask(column.id)}
-                              disabled={isCreating || !newTaskTitle.trim()}
-                            >
-                              {isCreating ? 'Guardando...' : 'Añadir'}
-                            </button>
-                            <button 
-                              className="btn-icon"
-                              onClick={() => {
-                                setAddingTaskToColumn(null)
-                                setNewTaskTitle('')
-                              }}
-                            >
-                              ✕
-                            </button>
-                          </div>
                         </div>
                       )}
-                    </div>
-                  )}
-                </Droppable>
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
 
-                {addingTaskToColumn !== column.id && (
-                  <div className="column-footer">
-                    <button 
-                      className="btn-add-inline"
-                      onClick={() => {
-                        setAddingTaskToColumn(column.id)
-                        setNewTaskTitle('')
-                      }}
-                    >
-                      <Plus size={16} /> Añadir tarea
-                    </button>
+                  {/* Add Column Button / Input */}
+                  <div className="kanban-column-add">
+                    {isAddingColumn ? (
+                      <div className="add-column-form">
+                        <input
+                          autoFocus
+                          type="text"
+                          className="add-column-input"
+                          placeholder="Nombre de la columna..."
+                          value={newColumnName}
+                          onChange={e => setNewColumnName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleCreateColumn()
+                            if (e.key === 'Escape') setIsAddingColumn(false)
+                          }}
+                          disabled={isCreatingColumn}
+                        />
+                        <div className="add-column-actions">
+                          <button 
+                            className="btn-primary btn-sm"
+                            onClick={handleCreateColumn}
+                            disabled={isCreatingColumn || !newColumnName.trim()}
+                          >
+                            {isCreatingColumn ? 'Creando...' : 'Añadir Columna'}
+                          </button>
+                          <button 
+                            className="btn-icon"
+                            onClick={() => setIsAddingColumn(false)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        className="btn-add-column"
+                        onClick={() => setIsAddingColumn(true)}
+                      >
+                        <Plus size={20} />
+                        <span>Añadir Columna</span>
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </DragDropContext>
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
         </main>
       )}
 
@@ -591,6 +694,70 @@ export function KanbanPage() {
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
           filter: brightness(1.1);
+        }
+
+        .kanban-column--dragging {
+          box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+          border-color: var(--color-accent);
+          background: var(--color-surface-2);
+        }
+
+        .kanban-column-add {
+          width: 300px;
+          flex-shrink: 0;
+        }
+
+        .btn-add-column {
+          width: 100%;
+          height: 54px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 2px dashed var(--color-border);
+          border-radius: 12px;
+          color: var(--color-text-secondary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-add-column:hover {
+          background: rgba(59, 130, 246, 0.05);
+          border-color: var(--color-accent);
+          color: var(--color-accent);
+        }
+
+        .add-column-form {
+          background: var(--color-surface);
+          border: 1px solid var(--color-accent);
+          border-radius: 12px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .add-column-input {
+          width: 100%;
+          background: var(--color-surface-2);
+          border: 1px solid var(--color-border);
+          border-radius: 8px;
+          padding: 10px;
+          color: var(--color-text-primary);
+          outline: none;
+          font-size: 0.875rem;
+        }
+
+        .add-column-input:focus {
+          border-color: var(--color-accent);
+        }
+
+        .add-column-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
         }
       `}</style>
     </div>
