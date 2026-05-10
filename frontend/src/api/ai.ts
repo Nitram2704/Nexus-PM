@@ -45,6 +45,7 @@ export interface AIMessage {
     role: 'user' | 'assistant'
     content: string
     created_at: string
+    action_metadata?: any
 }
 
 export const sendMessageApi = async (projectId: string, content: string) => {

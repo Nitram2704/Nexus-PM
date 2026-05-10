@@ -7,11 +7,13 @@ interface ChatState {
   isMinimized: boolean
   messages: AIMessage[]
   isLoading: boolean
+  pendingActionsCount: number
   
   setIsOpen: (open: boolean) => void
   setIsMinimized: (min: boolean) => void
   setMessages: (msgs: AIMessage[] | ((prev: AIMessage[]) => AIMessage[])) => void
   setIsLoading: (loading: boolean) => void
+  setPendingActionsCount: (count: number) => void
   addMessage: (msg: AIMessage) => void
   clearHistory: () => void
 }
@@ -23,6 +25,7 @@ export const useChatStore = create<ChatState>()(
       isMinimized: false,
       messages: [],
       isLoading: false,
+      pendingActionsCount: 0,
 
       setIsOpen: (open) => set({ isOpen: open }),
       setIsMinimized: (min) => set({ isMinimized: min }),
@@ -30,6 +33,7 @@ export const useChatStore = create<ChatState>()(
         messages: typeof msgs === 'function' ? msgs(state.messages) : msgs 
       })),
       setIsLoading: (loading) => set({ isLoading: loading }),
+      setPendingActionsCount: (count) => set({ pendingActionsCount: count }),
       addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
       clearHistory: () => set({ messages: [] })
     }),

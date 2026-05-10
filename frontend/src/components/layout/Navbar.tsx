@@ -1,8 +1,9 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { LogOut, Settings, Command, Cpu } from 'lucide-react'
+import { LogOut, Settings, Cpu } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
 import { useChatStore } from '@/store/chatStore'
+import { useUIStore } from '@/store/uiStore'
 import { NotificationBell } from '../notifications/NotificationBell'
 
 export function Navbar() {
@@ -12,7 +13,8 @@ export function Navbar() {
   const { logout } = useAuthStore()
 
   const activeProject = useProjectStore((s) => s.activeProject)
-  const { setIsOpen, isOpen } = useChatStore()
+  const { isIntelligenceOpen, toggleIntelligence } = useUIStore()
+  const { pendingActionsCount } = useChatStore()
 
   const handleLogout = () => {
     logout()
@@ -58,17 +60,23 @@ export function Navbar() {
 
       <div className="flex items-center gap-4 text-[10px] data-label">
         <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`px-3 py-1 border transition-all flex items-center gap-2 ${isOpen ? 'border-cyan-400 text-cyan-400 bg-cyan-400/10' : 'border-white/10 text-white/40 hover:text-white'}`}
+          onClick={() => toggleIntelligence()}
+          className={`px-3 py-1 border transition-all flex items-center gap-2 relative ${isIntelligenceOpen ? 'border-cyan-400 text-cyan-400 bg-cyan-400/10' : 'border-white/10 text-white/40 hover:text-white'}`}
         >
-          <Cpu className={`w-3 h-3 ${isOpen ? 'animate-pulse' : ''}`} />
+          <Cpu className={`w-3 h-3 ${isIntelligenceOpen ? 'animate-pulse' : ''}`} />
           <span>INTEL_HUB</span>
+          {pendingActionsCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping shadow-[0_0_5px_rgba(244,63,94,0.5)]"></span>
+          )}
         </button>
+        
         <NotificationBell />
+        
         <button className="text-white/40 hover:text-white transition-colors flex items-center gap-2">
           <Settings className="w-3 h-3" />
           <span className="hidden lg:inline">CONFIG</span>
         </button>
+        
         <button onClick={handleLogout} className="text-white/40 hover:text-rose-400 transition-colors flex items-center gap-2 border border-white/5 hover:border-rose-400/30 px-3 py-1">
           <LogOut className="w-3 h-3" />
           <span className="hidden sm:inline">EXIT_SESSION</span>

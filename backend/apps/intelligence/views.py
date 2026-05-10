@@ -48,7 +48,10 @@ class ChatView(views.APIView):
             )
             
             # Build context (Project-specific or Global)
-            context = self._build_context(project) if project else "CONTEXTO_GLOBAL: Usuario en Dashboard principal. Sin proyecto activo."
+            if project:
+                context = self._build_context(project)
+            else:
+                context = self._build_global_context(request.user)
             
             # Fetch last 10 messages for history
             history_qs = conversation.messages.all().order_by('-created_at')[1:11]
@@ -135,6 +138,25 @@ class ChatView(views.APIView):
         - Tareas totales: {tasks.count()}
         - Tareas completadas: {tasks.filter(column__name__icontains='done').count() or tasks.filter(column__name__icontains='completado').count()}
         - Tareas en progreso: {tasks.filter(column__name__icontains='progreso').count() or tasks.filter(column__name__icontains='progress').count()}
+        """
+        return context
+
+    def _build_global_context(self, user):
+        projects = Project.objects.filter(members=user)
+        project_summaries = []
+        
+        for p in projects:
+            task_count = p.tasks.count()
+            done_count = p.tasks.filter(column__name__icontains='done').count() or p.tasks.filter(column__name__icontains='completado').count()
+            project_summaries.append(f"- {p.name} ({p.key}): {task_count} tareas, {done_count} completadas.")
+
+        context = f"""
+        CONTEXTO_GLOBAL: El usuario no tiene un proyecto seleccionado actualmente (Dashboard).
+        
+        PROYECTOS_DEL_USUARIO:
+        {chr(10).join(project_summaries)}
+        
+        INSTRUCCIÓN: Responde de forma general sobre el estado de su portafolio o asiste en la selección de un proyecto.
         """
         return context
 
