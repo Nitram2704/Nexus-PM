@@ -1,11 +1,16 @@
 from rest_framework import serializers
 
-from .models import AIProposal, AIMessage
+from .models import AIProposal, AIMessage, ProposedAction
+
+class ProposedActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProposedAction
+        fields = ['id', 'action_type', 'params', 'status', 'created_at']
 
 class AIMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = AIMessage
-        fields = ['id', 'role', 'content', 'created_at']
+        fields = ['id', 'role', 'content', 'action_metadata', 'created_at']
 
 class ChatInputSerializer(serializers.Serializer):
     content = serializers.CharField()

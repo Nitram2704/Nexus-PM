@@ -1,26 +1,41 @@
 import { create } from 'zustand'
-
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  created_at: string
-}
+import { persist } from 'zustand/middleware'
+import { type AIMessage } from '@/api/ai'
 
 interface ChatState {
   isOpen: boolean
-  messages: ChatMessage[]
-  setIsOpen: (isOpen: boolean) => void
-  addMessage: (msg: ChatMessage) => void
-  setMessages: (msgs: ChatMessage[]) => void
-  clearMessages: () => void
+  isMinimized: boolean
+  messages: AIMessage[]
+  isLoading: boolean
+  
+  setIsOpen: (open: boolean) => void
+  setIsMinimized: (min: boolean) => void
+  setMessages: (msgs: AIMessage[] | ((prev: AIMessage[]) => AIMessage[])) => void
+  setIsLoading: (loading: boolean) => void
+  addMessage: (msg: AIMessage) => void
+  clearHistory: () => void
 }
 
-export const useChatStore = create<ChatState>((set) => ({
-  isOpen: false,
-  messages: [],
-  setIsOpen: (isOpen: boolean) => set({ isOpen }),
-  addMessage: (msg: ChatMessage) => set((state) => ({ messages: [...state.messages, msg] })),
-  setMessages: (msgs: ChatMessage[]) => set({ messages: msgs }),
-  clearMessages: () => set({ messages: [] })
-}))
+export const useChatStore = create<ChatState>()(
+  persist(
+    (set) => ({
+      isOpen: false,
+      isMinimized: false,
+      messages: [],
+      isLoading: false,
+
+      setIsOpen: (open) => set({ isOpen: open }),
+      setIsMinimized: (min) => set({ isMinimized: min }),
+      setMessages: (msgs) => set((state) => ({ 
+        messages: typeof msgs === 'function' ? msgs(state.messages) : msgs 
+      })),
+      setIsLoading: (loading) => set({ isLoading: loading }),
+      addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
+      clearHistory: () => set({ messages: [] })
+    }),
+    {
+      name: 'nexus-chat-storage',
+      partialize: (state) => ({ messages: state.messages }), // Persist only history
+    }
+  )
+)

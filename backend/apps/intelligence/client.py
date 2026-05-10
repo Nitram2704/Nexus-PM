@@ -5,9 +5,32 @@ from google import genai
 from google.genai import types
 from django.conf import settings
 
+SYSTEM_PROMPT = """
+Eres el NEXUS_COMMAND_CENTER (v3). Tu objetivo es gestionar proyectos Agile con precisión quirúrgica.
+
+HABILIDADES TÁCTICAS:
+1. Análisis de carga y cuellos de botella (Story Points, Impedimentos).
+2. Recomendación de prioridades (Valor de negocio vs Esfuerzo).
+3. Ejecución de comandos en el sistema.
+
+MODO AGÉNTICO (EXTREMADAMENTE IMPORTANTE):
+Si el usuario pide una acción (crear, mover, asignar), DEBES incluir un bloque JSON al final de tu respuesta precedido por 'EXEC_ACTION:'.
+
+HERRAMIENTAS DISPONIBLES:
+- CREATE_TASK: {"action": "create_task", "params": {"title": "...", "priority": "high/medium/low", "type": "task/bug"}}
+- MOVE_TASK: {"action": "move_task", "params": {"task_id": "...", "column_id": "..."}}
+- ASSIGN_USER: {"action": "assign_task", "params": {"task_id": "...", "user_email": "..."}}
+
+FORMATO DE RESPUESTA:
+[Tu respuesta narrativa en lenguaje táctico]
+
+EXEC_ACTION:
+{"action": "...", "params": {...}}
+"""
+
 class BacklogAIClient:
     """
-    Cliente para interactuar con la IA (Gemini/Gemma) y generar propuestas de backlog.
+    Cliente para interactuar con la IA (Gemini/Gemma) y gestionar el flujo de trabajo de Nexus-PM.
     """
     
     def __init__(self):
@@ -41,18 +64,8 @@ class BacklogAIClient:
             )
             return json.loads(response.text)
         except Exception as e:
-            print(f"Error con JSON mode v2 en backlog: {e}. Intentando parseo manual...")
-            try:
-                response = self.client.models.generate_content(model=self.model_name, contents=prompt)
-                text = response.text
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0]
-                elif "```" in text:
-                    text = text.split("```")[1].split("```")[0]
-                return json.loads(text.strip())
-            except Exception as e2:
-                print(f"Error final v2 en backlog: {e2}")
-                return self._get_mock_backlog(project_description)
+            print(f"Error con JSON mode v2 en backlog: {e}")
+            return self._get_mock_backlog(project_description)
 
     def generate_user_stories(self, requirement):
         if self.is_mock:
@@ -72,19 +85,8 @@ class BacklogAIClient:
             )
             return json.loads(response.text)
         except Exception as e:
-            print(f"Error con JSON mode v2 en historias: {e}. Intentando parseo manual...")
-            try:
-                response = self.client.models.generate_content(model=self.model_name, contents=prompt)
-                text = response.text
-                if "```json" in text:
-                    text = text.split("```json")[1].split("```")[0]
-                elif "```" in text:
-                    text = text.split("```")[1].split("```")[0]
-                return json.loads(text.strip())
-            except Exception as e2:
-                print(f"Error final v2 en historias: {e2}")
-                return self._get_mock_stories(requirement)
-
+            print(f"Error con JSON mode v2 en historias: {e}")
+            return self._get_mock_stories(requirement)
 
     def chat(self, message, context="", history=None):
         if self.is_mock:
@@ -94,10 +96,9 @@ class BacklogAIClient:
             history = []
 
         history_str = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in history])
-
-        system_prompt = f"""
-        Eres Nexus AI, el Asistente Scrum Master avanzado para Nexus-PM.
-        Tu misión es optimizar el flujo de trabajo (Flow) y la carga del equipo.
+        
+        prompt = f"""
+        {SYSTEM_PROMPT}
         
         CONTEXTO ACTUAL DEL PROYECTO:
         {context}
@@ -105,60 +106,32 @@ class BacklogAIClient:
         HISTORIAL DE CONVERSACIÓN:
         {history_str}
         
-        INSTRUCCIONES:
-        1. Eres profesional, directo y táctico. Respondas como si estuvieras en una terminal de comando.
-        2. Si el usuario te pide una auditoría o pregunta cómo va el equipo:
-           - Analiza quién tiene más tareas/puntos.
-           - Identifica cuellos de botella.
-        3. NUEVO: Si recibes el comando `/nexus` o similar, genera una "NARRATIVA DE PROYECTO" (Wins y Risks).
-        4. Siempre usa tablas Markdown para datos si es posible.
-        5. Responde en español (Neutro o de España).
+        Mensaje del usuario: {message}
         """
         
         try:
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=f"{system_prompt}\n\nMensaje del usuario: {message}"
+                contents=prompt
             )
             return response.text
         except Exception as e:
             print(f"Error en chat AI v2: {e}")
             return "Lo siento, tuve un problema procesando tu solicitud tactical."
 
-    def _get_mock_stories(self, requirement):
-
-        return [
-            {
-                "role": "Usuario",
-                "action": "iniciar sesión con Google",
-                "benefit": "no tener que recordar otra contraseña",
-                "title": "Autenticación con Google (Fallback)",
-                "acceptance_criteria": ["Criterio 1"],
-                "priority": "high",
-                "type": "story"
-            }
-        ]
-
-    def _get_mock_backlog(self, description):
-        return [{"epic": "Autenticación (Fallback)", "items": [{"title": "Login", "description": "d", "type": "feature", "priority": "high"}]}]
-
     def get_foresight_recommendation(self, foresight_data):
-        """
-        Genera una recomendación táctica basada en el análisis de riesgo actual.
-        """
         if self.is_mock:
             risk = foresight_data.get('risk_level', 'low')
             if risk in ['high', 'critical']:
-                return "Recomendación: Peligro de incumplimiento. Sugiere mover tareas del backlog a 'Planning' o aumentar el equipo."
-            return "Recomendación: El equipo mantiene un buen ritmo. No se requieren ajustes inmediatos."
+                return "Recomendación: Peligro de incumplimiento. Mover tareas a 'Planning'."
+            return "Recomendación: Equipo con buen ritmo."
             
         prompt = f"""
-        Analiza los siguientes datos de riesgo de un Sprint de desarrollo:
+        {SYSTEM_PROMPT}
+        Analiza los siguientes datos de riesgo de un Sprint:
         {json.dumps(foresight_data)}
         
-        Genera una recomendación de 1 o 2 frases máximo para el Scrum Master.
-        Sé táctico, directo y profesional. Usa el nombre/email de los miembros si están sobrecargados.
-        Responde en español.
+        Genera una recomendación de 1 o 2 frases máximo. Directo. Táctico.
         """
         
         try:
@@ -169,4 +142,37 @@ class BacklogAIClient:
             return response.text.strip()
         except Exception as e:
             print(f"Error en foresight recommendation AI: {e}")
-            return "Analiza manualmente la carga; el motor de sugerencias temporalmente no disponible."
+            return "Analiza manualmente la carga."
+
+    def get_simulation_analysis(self, simulation_data):
+        if self.is_mock:
+            return f"SIM_REPORT: Riesgo proyectado {simulation_data['risk_level'].upper()}. Desviación: {simulation_data['risk_index']}%."
+            
+        prompt = f"""
+        {SYSTEM_PROMPT}
+        ESCENARIO SIMULADO:
+        {json.dumps(simulation_data['scenario'])}
+        
+        RESULTADOS DE SIMULACIÓN:
+        - Nivel de Riesgo: {simulation_data['risk_level']}
+        - Índice de Riesgo: {simulation_data['risk_index']}
+        - Progreso de Trabajo proyectado: {simulation_data['indicators']['work_completed_pct']}%
+        
+        Actúa como el Oráculo de Nexus. Describe brevemente (max 3 frases) el impacto de este escenario. Sé directo y brutalmente honesto.
+        """
+        
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            return response.text.strip()
+        except Exception as e:
+            print(f"Error en simulation analysis AI: {e}")
+            return "No se pudo realizar el análisis táctico de simulación."
+
+    def _get_mock_stories(self, requirement):
+        return [{"role": "Usuario", "action": "X", "benefit": "Y", "title": "Mock Story", "acceptance_criteria": ["C1"], "priority": "high", "type": "story"}]
+
+    def _get_mock_backlog(self, description):
+        return [{"epic": "Mock Epic", "items": [{"title": "Mock Task", "description": "d", "type": "feature", "priority": "high"}]}]

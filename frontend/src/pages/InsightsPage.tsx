@@ -6,28 +6,36 @@ import {
 } from 'recharts'
 import { 
   Loader2, Activity,
-  Users, TrendingUp, Zap, ShieldCheck,
-  Target, Globe, Cpu
+  Users, Zap,
+  Globe, Cpu
 } from 'lucide-react'
 import { getProjectAnalytics, getHudAnalytics } from '@/api/analytics'
 import { motion } from 'framer-motion'
+import { SimulationControls } from '@/components/intel/SimulationControls'
+import ActionConfirmationHub from '@/components/intel/ActionConfirmationHub'
+import { api } from '@/api/client'
 
 export default function InsightsPage() {
   const { projectId } = useParams<{ projectId: string }>()
 
-  const { data: summaryData, isLoading: isSummaryLoading } = useQuery({
+  const { data: summaryData, isLoading: isSummaryLoading, refetch: refetchSummary } = useQuery({
     queryKey: ['project-analytics', projectId],
     queryFn: () => getProjectAnalytics(projectId!),
     enabled: !!projectId,
     refetchInterval: 60000
   })
 
-  const { data: hudData, isLoading: isHudLoading } = useQuery({
+  const { data: hudData, isLoading: isHudLoading, refetch: refetchHud } = useQuery({
     queryKey: ['project-hud-analytics', projectId],
     queryFn: () => getHudAnalytics(projectId!),
     enabled: !!projectId,
     refetchInterval: 60000
   })
+
+  const runSimulation = async (params: { capacity: number; scope: number; deadline_shift: number }) => {
+    const res = await api.post(`/intelligence/projects/${projectId}/ai/simulate/`, params)
+    return res.data
+  }
 
   if (isSummaryLoading || isHudLoading) return (
     <div className="h-[80vh] flex items-center justify-center">
@@ -170,41 +178,15 @@ export default function InsightsPage() {
             </div>
         </section>
 
-        {/* PREDICTIVE ANALYSIS (Bottom Left) */}
-        <section className="col-span-4 border border-white/5 p-5 flex flex-col justify-between relative bg-white/1 group">
-            <div className="absolute top-0 left-0 w-8 h-px bg-amber-400/40 group-hover:w-full transition-all duration-700" />
-            <div>
-              <h2 className="text-[9px] text-white/30 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-3 h-3 text-amber-400/60" /> PERFORMANCE_PROJECTION
-              </h2>
-              <div className="space-y-4">
-                  <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                      <span className="text-[8px] text-white/20 uppercase flex items-center gap-1"><Target className="w-2 h-2" /> Cycle_Time_Target</span>
-                      <span className="text-xs text-white/80 font-bold">5.0d</span>
-                  </div>
-                  <div className="flex justify-between items-end border-b border-white/5 pb-2">
-                      <span className="text-[8px] text-white/20 uppercase">Current_Cycle_Avg</span>
-                      <span className="text-xs text-white/80 font-bold">{lastSnapshot?.cycle_time_avg?.toFixed(1) || summaryData?.cycle_time || 0}d</span>
-                  </div>
-                  <div className="flex justify-between items-end border-b border-cyan-500/20 pb-2">
-                      <span className="text-[8px] text-cyan-400 uppercase">Deviation</span>
-                      <span className="text-xs text-cyan-400 font-bold">
-                        {lastSnapshot?.cycle_time_avg ? (lastSnapshot.cycle_time_avg - 5.0).toFixed(1) : 0}d
-                      </span>
-                  </div>
-              </div>
-            </div>
-            <div className="p-3 bg-cyan-500/5 border border-cyan-500/10 relative overflow-hidden">
-               <motion.div 
-                 initial={{ x: '-100%' }}
-                 animate={{ x: '100%' }}
-                 transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                 className="absolute inset-0 bg-cyan-400/5 w-1/2 -skew-x-12"
-               />
-               <p className="text-[8px] text-cyan-400/80 leading-relaxed uppercase relative z-10">
-                 {'>'} AI_ADVISORY: BLOQUEO DETECTADO EN SECTOR_QC. LA VELOCIDAD DE FLUJO HA DISMINUIDO UN 12% EN LAS ÚLTIMAS 24H.
-               </p>
-            </div>
+        {/* ACTION CONFIRMATION HUB (Bottom Left) */}
+        <section className="col-span-4 relative flex flex-col min-h-0 overflow-hidden">
+            <ActionConfirmationHub 
+              projectId={projectId!} 
+              onActionExecuted={() => {
+                refetchSummary();
+                refetchHud();
+              }} 
+            />
         </section>
 
         {/* WORKLOAD DISTRIBUTION (Bottom Center) */}
@@ -236,28 +218,10 @@ export default function InsightsPage() {
             </div>
         </section>
 
-        {/* SYSTEM CORES STATUS (Bottom Right) */}
-        <section className="col-span-3 border border-cyan-500/10 p-5 flex flex-col justify-between relative bg-cyan-500/2 group">
+        {/* PRE-CRIME SIMULATOR (Bottom Right) */}
+        <section className="col-span-3 border border-cyan-500/10 flex flex-col relative overflow-hidden bg-black/20">
             <div className="absolute top-0 left-0 w-8 h-px bg-cyan-400/60 transition-all duration-700" />
-            <div className="flex items-center gap-2 text-cyan-400 mb-4 text-[9px] font-bold uppercase tracking-[0.2em]">
-                <ShieldCheck className="w-3 h-3" /> CORE_STABILITY
-            </div>
-            <div className="text-[8px] text-cyan-400/50 space-y-2 uppercase leading-tight">
-               <p className="flex justify-between"><span>DATABASE:</span> <span className="text-emerald-400">SYNC</span></p>
-               <p className="flex justify-between"><span>AI_ENGINE:</span> <span className="text-cyan-400">READY</span></p>
-               <p className="flex justify-between"><span>NETWORK:</span> <span className="text-emerald-400">10G_UP</span></p>
-            </div>
-            <div className="h-1 bg-white/5 mt-4 relative">
-               <motion.div 
-                 className="absolute h-full bg-cyan-400"
-                 initial={{ width: 0 }}
-                 animate={{ width: `${summaryData?.health_score || 0}%` }}
-                 transition={{ duration: 1.5, ease: 'easeOut' }}
-               />
-            </div>
-            <button className="w-full mt-4 py-2 bg-cyan-500/10 border border-cyan-500/20 text-[8px] uppercase tracking-[0.3em] hover:bg-cyan-500/30 hover:border-cyan-400 transition-all text-cyan-400 font-bold">
-                INITIATE_DEEP_SYNC
-            </button>
+            <SimulationControls onSimulate={runSimulation} />
         </section>
 
       </div>

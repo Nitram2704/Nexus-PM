@@ -84,3 +84,56 @@ class ForesightEngine:
                     "task_count": m['count']
                 })
         return overloaded
+
+    def run_simulation(self, capacity_multiplier=1.0, scope_multiplier=1.0, deadline_shift_days=0):
+        """
+        Simula un escenario "What-if" alterando variables del sprint activo.
+        """
+        base_foresight = self.get_sprint_foresight()
+        if base_foresight["risk_level"] == "none" and not self.active_sprint:
+            return base_foresight
+
+        # Ajuste de Puntos (Scope)
+        sim_total_points = base_foresight["indicators"]["total_points"] * scope_multiplier
+        sim_completed_points = base_foresight["indicators"]["completed_points"]
+        
+        # Ajuste de Tiempo (Deadline)
+        original_end = self.active_sprint.end_date
+        sim_end = original_end + timezone.timedelta(days=deadline_shift_days)
+        
+        total_duration = (sim_end - self.active_sprint.start_date).total_seconds()
+        now = timezone.now()
+        elapsed_time = (now - self.active_sprint.start_date).total_seconds()
+        
+        if total_duration <= 0: return base_foresight
+        
+        time_progress = max(0.0, min(1.0, elapsed_time / total_duration))
+        
+        # Ajuste de Capacidad (Afecta el ritmo de completado proyectado)
+        # La lógica aquí es: si la capacidad baja, la desviación aumenta.
+        work_progress = sim_completed_points / sim_total_points if sim_total_points > 0 else 1.0
+        
+        # Factor de capacidad: Si capacity_multiplier < 1, el riesgo escala inversamente
+        effective_deviation = (time_progress - work_progress) / capacity_multiplier
+        
+        sim_risk_index = max(0, min(100, effective_deviation * 150))
+        
+        sim_risk_level = "low"
+        if sim_risk_index > 25: sim_risk_level = "medium"
+        if sim_risk_index > 60: sim_risk_level = "high"
+        
+        return {
+            "scenario": {
+                "capacity": capacity_multiplier,
+                "scope": scope_multiplier,
+                "deadline_shift": deadline_shift_days
+            },
+            "risk_level": sim_risk_level,
+            "risk_index": round(sim_risk_index, 2),
+            "indicators": {
+                "time_elapsed_pct": round(time_progress * 100, 2),
+                "work_completed_pct": round(work_progress * 100, 2),
+                "sim_total_points": sim_total_points,
+                "original_risk_index": base_foresight["risk_index"]
+            }
+        }

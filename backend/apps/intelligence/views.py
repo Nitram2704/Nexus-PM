@@ -1,12 +1,16 @@
 from rest_framework import views, status, response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+import json
 from apps.projects.models import Project
 from apps.projects.permissions import IsProjectMember
 from django.db import models
 
-from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage
-from .serializers import GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer, ChatInputSerializer
+from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage, ProposedAction
+from .serializers import (
+    GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer, 
+    ChatInputSerializer, ProposedActionSerializer
+)
 from .client import BacklogAIClient
 from .agents.orchestrator import AgentOrchestrator
 from .foresight import ForesightEngine
@@ -18,13 +22,19 @@ class ChatView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]
 
     def post(self, request, project_id):
-        project = get_object_or_404(Project, id=project_id)
+        # Support for global chat or specific project
+        project = None
+        if project_id != 'global':
+            project = get_object_or_404(Project, id=project_id)
+            # Check permissions only if project exists
+            self.check_object_permissions(request, project)
+        
         serializer = ChatInputSerializer(data=request.data)
         
         if serializer.is_valid():
             content = serializer.validated_data['content']
             
-            # Get or create conversation
+            # Get or create conversation (Global conversations use project=None)
             conversation, _ = AIConversation.objects.get_or_create(
                 project=project,
                 user=request.user
@@ -37,28 +47,50 @@ class ChatView(views.APIView):
                 content=content
             )
             
-            # Build context (including recent activity)
-            context = self._build_context(project)
+            # Build context (Project-specific or Global)
+            context = self._build_context(project) if project else "CONTEXTO_GLOBAL: Usuario en Dashboard principal. Sin proyecto activo."
             
             # Fetch last 10 messages for history
-            history_qs = conversation.messages.all().order_by('-created_at')[1:11] # Skip current msg
+            history_qs = conversation.messages.all().order_by('-created_at')[1:11]
             history = [{'role': m.role, 'content': m.content} for m in reversed(list(history_qs))]
 
             # Call AI
             client = BacklogAIClient()
-            ai_response = client.chat(content, context, history=history)
+            ai_response_text = client.chat(content, context, history=history)
             
+            # Detect EXEC_ACTION
+            action_metadata = None
+            if 'EXEC_ACTION:' in ai_response_text:
+                parts = ai_response_text.split('EXEC_ACTION:')
+                ai_response_text = parts[0].strip()
+                try:
+                    action_metadata = json.loads(parts[1].strip())
+                except:
+                    pass
+
             # Save AI response
             ai_msg = AIMessage.objects.create(
                 conversation=conversation,
                 role='assistant',
-                content=ai_response
+                content=ai_response_text,
+                action_metadata=action_metadata
             )
             
-            # Update conversation timestamp
-            conversation.save()
+            # If there's an action, create a ProposedAction entry
+            if action_metadata:
+                ProposedAction.objects.create(
+                    project=project,
+                    user=request.user,
+                    message=ai_msg,
+                    action_type=action_metadata.get('action', 'UNKNOWN'),
+                    params=action_metadata.get('params', {}),
+                    status='PENDING'
+                )
             
+            conversation.save()
             return response.Response(AIMessageSerializer(ai_msg).data, status=status.HTTP_201_CREATED)
+        
+        return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -319,4 +351,65 @@ class ForesightView(views.APIView):
         foresight_data['ai_recommendation'] = recommendation
 
         return response.Response(foresight_data)
+
+class SimulationView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def post(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        
+        capacity = float(request.data.get('capacity', 1.0))
+        scope = float(request.data.get('scope', 1.0))
+        deadline_shift = int(request.data.get('deadline_shift', 0))
+        
+        engine = ForesightEngine(project)
+        simulation_data = engine.run_simulation(
+            capacity_multiplier=capacity,
+            scope_multiplier=scope,
+            deadline_shift_days=deadline_shift
+        )
+        
+        ai_client = BacklogAIClient()
+        simulation_data['ai_analysis'] = ai_client.get_simulation_analysis(simulation_data)
+        
+        return response.Response(simulation_data)
+
+class ProposedActionView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        actions = ProposedAction.objects.filter(project=project, status='PENDING')
+        return response.Response(ProposedActionSerializer(actions, many=True).data)
+
+    def post(self, request, project_id, action_id):
+        project = get_object_or_404(Project, id=project_id)
+        action = get_object_or_404(ProposedAction, id=action_id, project=project)
+        
+        approve = request.data.get('approve', True)
+        
+        if not approve:
+            action.status = 'REJECTED'
+            action.save()
+            return response.Response({"status": "REJECTED"})
+
+        # Execute Action
+        try:
+            if action.action_type == 'CREATE_TASK':
+                params = action.params
+                Task.objects.create(
+                    project=project,
+                    title=params.get('title', 'AI Task'),
+                    description=params.get('description', ''),
+                    type=params.get('type', 'task'),
+                    priority=params.get('priority', 'medium'),
+                    creator=request.user,
+                    column=project.columns.first()
+                )
+            
+            action.status = 'EXECUTED'
+            action.save()
+            return response.Response({"status": "EXECUTED"})
+        except Exception as e:
+            return response.Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
