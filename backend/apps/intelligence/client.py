@@ -11,7 +11,7 @@ class BacklogAIClient:
         self.is_mock = not settings.GOOGLE_API_KEY or settings.GOOGLE_API_KEY == 'your-api-key-here'
         
         self.model = genai.GenerativeModel(
-            model_name='gemma-4-26b-a4b-it', # Usando el nuevo modelo Gemma 4
+            model_name='gemma-4-26b-a4b-it', # Regresando a Gemma 4 según solicitud
             generation_config={
                 "temperature": 0.4,
                 "top_p": 0.95,
@@ -19,6 +19,25 @@ class BacklogAIClient:
                 "max_output_tokens": 2048,
             }
         )
+
+    def _extract_json(self, text):
+        """
+        Extrae el bloque JSON de una respuesta de texto, incluso si tiene decoradores o texto extra.
+        """
+        import re
+        # Buscar el bloque JSON en caso de que la IA incluya texto antes o después
+        json_match = re.search(r'(\[.*\]|\{.*\})', text, re.DOTALL)
+        if json_match:
+            clean_text = json_match.group(1)
+        else:
+            clean_text = text.replace('```json', '').replace('```', '').strip()
+        
+        try:
+            return json.loads(clean_text)
+        except json.JSONDecodeError as e:
+            print(f"Error parseando JSON de la IA: {e}")
+            print(f"Texto original: {text}")
+            return None
 
     def generate_backlog_from_description(self, description):
         """
@@ -57,9 +76,7 @@ class BacklogAIClient:
         
         try:
             response = self.model.generate_content(prompt)
-            # Limpiar posibles bloques de código markdown
-            text = response.text.replace('```json', '').replace('```', '').strip()
-            return json.loads(text)
+            return self._extract_json(response.text)
         except Exception as e:
             print(f"Error en IA Backlog: {e}")
             return None
@@ -103,8 +120,7 @@ class BacklogAIClient:
         
         try:
             response = self.model.generate_content(prompt)
-            text = response.text.replace('```json', '').replace('```', '').strip()
-            return json.loads(text)
+            return self._extract_json(response.text)
         except Exception as e:
             print(f"Error en IA Stories: {e}")
             return None
@@ -171,18 +187,7 @@ class BacklogAIClient:
         
         try:
             response = self.model.generate_content(prompt)
-            # Limpiar posibles bloques de código markdown y extraer solo el contenido JSON
-            raw_text = response.text
-            
-            # Buscar el bloque JSON en caso de que la IA incluya texto antes o después
-            import re
-            json_match = re.search(r'(\{.*\})', raw_text, re.DOTALL)
-            if json_match:
-                text = json_match.group(1)
-            else:
-                text = raw_text.replace('```json', '').replace('```', '').strip()
-                
-            return json.loads(text)
+            return self._extract_json(response.text)
         except Exception as e:
             print(f"Error en priorización: {e}")
             if 'response' in locals() and hasattr(response, 'text'):
