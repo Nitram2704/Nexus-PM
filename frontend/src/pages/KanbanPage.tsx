@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, User } from 'lucide-react'
+import { Loader2, Plus, User, MessageSquare, BarChart3, Search, X, AlertCircle, Sparkles } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { getSprintsApi } from '@/api/sprints'
 import { createTaskApi } from '@/api/tasks'
@@ -9,10 +9,16 @@ import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { Link } from 'react-router-dom'
 import { useProjectStore } from '@/store/projectStore'
+import { useAuthStore } from '@/store/authStore'
 import { TaskDetailDrawer } from '@/components/kanban/TaskDetailDrawer'
 import { ColumnMenu } from '@/components/kanban/ColumnMenu'
 import { AISuggestionModal } from '@/components/kanban/AISuggestionModal'
+import { VelocityReport } from '@/components/reports/VelocityReport'
+import { BurndownChart } from '@/components/reports/BurndownChart'
+import { SprintAISummary } from '@/components/reports/SprintAISummary'
+import { Modal } from '@/components/Modal'
 import RecommendationsPanel from '@/components/ai/RecommendationsPanel'
+import { AIChatDrawer } from '@/components/ai/AIChatDrawer'
 import { 
   renameColumnApi, 
   clearColumnTasksApi, 
@@ -23,7 +29,7 @@ import {
   reorderColumnsApi
 } from '@/api/columns'
 import { ConfirmDialog } from '@/components/kanban/ConfirmDialog'
-import { supabase } from '@/lib/supabase'
+
 
 export function KanbanPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -39,6 +45,14 @@ export function KanbanPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isReportsOpen, setIsReportsOpen] = useState(false)
+  const [reportTab, setReportTab] = useState<'velocity' | 'burndown' | 'ai_summary'>('velocity')
+  
+  // Filter States (HU-21)
+  const [filterText, setFilterText] = useState('')
+  const [onlyMyTasks, setOnlyMyTasks] = useState(false)
+  const { user: currentUser } = useAuthStore()
   
   // New Column States
   const [isAddingColumn, setIsAddingColumn] = useState(false)
@@ -67,6 +81,7 @@ export function KanbanPage() {
     }
   }, [projectId])
 
+  /*
   useEffect(() => {
     if (!projectId) return
 
@@ -103,6 +118,7 @@ export function KanbanPage() {
       supabase.removeChannel(channel)
     }
   }, [projectId])
+  */
 
   const handleCreateTask = async (columnId: string) => {
     if (!newTaskTitle.trim() || !project || !activeSprint) return
@@ -156,15 +172,20 @@ export function KanbanPage() {
   const loadProject = async () => {
     if (!projectId) return
     try {
-      const [projRes, sprintRes] = await Promise.all([
+      const [projectRes, sprintRes] = await Promise.all([
         getProjectDetailApi(projectId),
         getSprintsApi(projectId)
       ])
-      setProject(projRes.data)
-      setActiveProject(projRes.data) // Share with Navbar via global store
-      setSprints(sprintRes.data)
+      
+      setProject(projectRes.data || null)
+      setSprints(Array.isArray(sprintRes.data) ? sprintRes.data : [])
+      
+      if (projectRes.data) {
+        setActiveProject(projectRes.data)
+      }
     } catch (err) {
-      toast.error('Error al cargar el tablero')
+      console.error('Error loading project', err)
+      toast.error('No se pudo cargar el proyecto.')
     } finally {
       setIsLoading(false)
     }
@@ -310,6 +331,23 @@ export function KanbanPage() {
     }
   }
 
+  const activeSprint = sprints.find(s => s.status === 'active')
+  
+  const boardColumns = project?.columns ? project.columns.map(col => ({
+    ...col,
+    tasks: (col.tasks || []).filter(t => t.sprint === (activeSprint ? activeSprint.id : null))
+  })) : []
+
+  const filteredColumns = boardColumns.map(column => ({
+    ...column,
+    tasks: column.tasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(filterText.toLowerCase()) || 
+                           task.key.toLowerCase().includes(filterText.toLowerCase());
+      const matchesUser = !onlyMyTasks || (task.assignee === currentUser?.id);
+      return matchesSearch && matchesUser;
+    })
+  }));
+
   if (isLoading) {
     return (
       <div className="kanban-loading">
@@ -319,12 +357,6 @@ export function KanbanPage() {
     )
   }
 
-  const activeSprint = sprints.find(s => s.status === 'active')
-  
-  const boardColumns = project?.columns ? project.columns.map(col => ({
-    ...col,
-    tasks: (col.tasks || []).filter(t => t.sprint === (activeSprint?.id || null))
-  })) : []
 
   return (
     <div className="kanban-wrapper">
@@ -332,13 +364,44 @@ export function KanbanPage() {
         <div className="kanban-header-left">
           <h1 className="kanban-project-title">{project?.name || 'Cargando...'}</h1>
           <span className="kanban-project-key">{project?.key}</span>
-          {activeSprint && (
+          {activeSprint ? (
             <div className="active-sprint-badge">
               <span className="dot"></span>
               {activeSprint.name}
             </div>
+          ) : (
+            <div className="no-sprint-badge">
+              Sin Sprint Activo
+            </div>
           )}
         </div>
+        
+        <div className="kanban-filters">
+          <div className="search-container">
+            <Search size={14} className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="Filtrar tareas..." 
+              value={filterText}
+              onChange={(e) => setFilterText(e.target.value)}
+              className="filter-input"
+            />
+            {filterText && (
+              <button onClick={() => setFilterText('')} className="clear-filter">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          
+          <button 
+            className={`filter-chip ${onlyMyTasks ? 'active' : ''}`}
+            onClick={() => setOnlyMyTasks(!onlyMyTasks)}
+          >
+            <User size={14} />
+            Mis tareas
+          </button>
+        </div>
+
         <div className="kanban-header-actions">
           <button 
             className="btn-secondary"
@@ -348,11 +411,25 @@ export function KanbanPage() {
             Recomendaciones AI
           </button>
           <button 
+            className="btn-chat"
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            title="Chat con Nexus Agent"
+          >
+            <MessageSquare size={16} />
+            Chat
+          </button>
+          <button 
             className="btn-ai"
             onClick={() => setIsAIModalOpen(true)}
             title="Generar historias o backlog con IA"
           >
             ✨ Nexus AI
+          </button>
+          <button 
+            className="btn-secondary"
+            onClick={() => setIsReportsOpen(true)}
+          >
+            <BarChart3 size={16} /> Reportes
           </button>
           <button 
             className="btn-primary"
@@ -390,7 +467,7 @@ export function KanbanPage() {
                   ref={provided.innerRef}
                   className="kanban-board"
                 >
-                  {boardColumns.map((column, index) => (
+                  {filteredColumns.map((column, index) => (
                     <Draggable key={column.id} draggableId={column.id} index={index}>
                       {(provided, snapshot) => (
                         <div 
@@ -604,6 +681,14 @@ export function KanbanPage() {
         />
       )}
 
+      <AIChatDrawer 
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        projectId={projectId || ''}
+        project={project}
+        onTaskCreated={loadProject}
+      />
+
       <ConfirmDialog 
         isOpen={confirmConfig.isOpen}
         onClose={() => setConfirmConfig({ ...confirmConfig, isOpen: false })}
@@ -627,10 +712,159 @@ export function KanbanPage() {
         variant={confirmConfig.type === 'move_all' ? 'info' : 'danger'}
       />
 
+      <Modal
+        isOpen={isReportsOpen}
+        onClose={() => setIsReportsOpen(false)}
+        title="Reportes de Rendimiento"
+        maxWidth="800px"
+      >
+        <div className="flex flex-col gap-6">
+          <div className="flex gap-2 p-1 bg-[#1a2235] border border-[#2a3655] rounded-lg self-start">
+            <button 
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                reportTab === 'velocity' 
+                  ? 'bg-blue-500 text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              onClick={() => setReportTab('velocity')}
+            >
+              Velocidad
+            </button>
+            <button 
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                reportTab === 'burndown' 
+                  ? 'bg-indigo-500 text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              onClick={() => setReportTab('burndown')}
+            >
+              Burndown
+            </button>
+            <button 
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+                reportTab === 'ai_summary' 
+                  ? 'bg-purple-500 text-white shadow-lg' 
+                  : 'text-slate-400 hover:text-white'
+              }`}
+              onClick={() => setReportTab('ai_summary')}
+            >
+              <Sparkles size={14} />
+              Resumen AI
+            </button>
+          </div>
+
+          <div className="p-2">
+            {reportTab === 'velocity' ? (
+              projectId && <VelocityReport projectId={projectId} />
+            ) : reportTab === 'burndown' ? (
+              activeSprint ? (
+                <BurndownChart sprintId={activeSprint.id} />
+              ) : (
+                <div className="h-[400px] flex flex-col items-center justify-center bg-[#1a2235]/50 rounded-xl border border-[#2a3655] p-8 text-center">
+                  <AlertCircle className="w-8 h-8 text-slate-500 mb-2" />
+                  <h3 className="text-white font-medium">Sin Sprint Activo</h3>
+                  <p className="text-slate-400 text-sm max-w-xs mx-auto mt-1">
+                    El Burndown Chart requiere un sprint activo para mostrar datos de progreso diario.
+                  </p>
+                </div>
+              )
+            ) : (
+              activeSprint ? (
+                <SprintAISummary sprintId={activeSprint.id} />
+              ) : (
+                <div className="h-[400px] flex flex-col items-center justify-center bg-[#1a2235]/50 rounded-xl border border-[#2a3655] p-8 text-center">
+                  <Sparkles className="w-8 h-8 text-slate-500 mb-2" />
+                  <h3 className="text-white font-medium">Sin Sprint Activo</h3>
+                  <p className="text-slate-400 text-sm max-w-xs mx-auto mt-1">
+                    Nexus AI necesita un sprint activo para generar un resumen ejecutivo de las tareas y el progreso.
+                  </p>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </Modal>
+
       <style>{`
         .kanban-wrapper { height: calc(100vh - 60px); display: flex; flex-direction: column; background: var(--color-bg); }
         .kanban-header { padding: 24px; display: flex; align-items: center; justify-content: space-between; }
         .kanban-header-left { display: flex; align-items: center; gap: 12px; }
+        
+        .kanban-filters {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: var(--color-surface-2);
+          padding: 6px 12px;
+          border-radius: 12px;
+          border: 1px solid var(--color-border);
+        }
+
+        .search-container {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          position: relative;
+        }
+
+        .search-icon {
+          color: var(--color-text-muted);
+        }
+
+        .filter-input {
+          background: transparent;
+          border: none;
+          color: var(--color-text-primary);
+          font-size: 0.875rem;
+          outline: none;
+          width: 150px;
+          transition: width 0.2s;
+        }
+
+        .filter-input:focus {
+          width: 200px;
+        }
+
+        .clear-filter {
+          background: none;
+          border: none;
+          color: var(--color-text-muted);
+          cursor: pointer;
+          display: flex;
+          padding: 2px;
+          border-radius: 50%;
+        }
+
+        .clear-filter:hover {
+          background: var(--color-surface);
+          color: var(--color-text-primary);
+        }
+
+        .filter-chip {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 6px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--color-text-secondary);
+          background: transparent;
+          border: 1px solid transparent;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .filter-chip:hover {
+          background: var(--color-surface);
+        }
+
+        .filter-chip.active {
+          background: rgba(59, 130, 246, 0.1);
+          border-color: rgba(59, 130, 246, 0.3);
+          color: var(--color-accent);
+        }
+
         .kanban-project-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
         .kanban-project-key { padding: 2px 8px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); }
         .kanban-board-container { flex: 1; overflow-x: auto; padding: 0 24px 24px; }
@@ -694,6 +928,26 @@ export function KanbanPage() {
           transform: translateY(-1px);
           box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
           filter: brightness(1.1);
+        }
+
+        .btn-chat {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #334155;
+          border: 1px solid #475569;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .btn-chat:hover {
+          background: #475569;
+          transform: translateY(-1px);
         }
 
         .kanban-column--dragging {

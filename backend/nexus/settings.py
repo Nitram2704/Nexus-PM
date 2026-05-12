@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "apps.projects",
     "apps.tasks",
     "apps.intelligence",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -122,3 +123,7 @@ DEFAULT_FROM_EMAIL = "noreply@nexuspm.com"
 # ─── PASSWORD RESET ───────────────────────────────────────────────────────────
 # Timeout in seconds (30 minutes = 1800s)
 PASSWORD_RESET_TIMEOUT = 1800
+
+# ─── AI SETTINGS ──────────────────────────────────────────────────────────────
+GOOGLE_API_KEY = config("GOOGLE_API_KEY", default="your-api-key-here")
+

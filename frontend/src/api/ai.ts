@@ -63,3 +63,28 @@ export const updateRecommendationApi = async (projectId: string, recommendationI
     const response = await apiClient.patch<AIRecommendation>(`/v1/projects/${projectId}/ai/recommendations/${recommendationId}/`, { status })
     return response.data
 }
+
+export interface ChatMessage {
+    role: 'user' | 'model'
+    parts: { text: string }[]
+}
+
+export const projectChatApi = async (projectId: string, message: string, history: ChatMessage[]) => {
+    const response = await apiClient.post<{ response: string }>(`/v1/projects/${projectId}/ai/chat/`, { message, history })
+    return response.data
+}
+
+export interface AIPrioritizationSuggestion {
+    reasoning: string
+    ordered_ids: string[]
+}
+
+export const getBacklogPrioritizationApi = async (projectId: string) => {
+    const response = await apiClient.get<AIPrioritizationSuggestion>(`/v1/projects/${projectId}/ai/prioritize-backlog/`)
+    return response.data
+}
+
+export const applyBacklogPrioritizationApi = async (projectId: string, orderedIds: string[]) => {
+    const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/prioritize-backlog/`, { ordered_ids: orderedIds })
+    return response.data
+}

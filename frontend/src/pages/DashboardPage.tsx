@@ -18,7 +18,7 @@ export function DashboardPage() {
             Tu sesión está activa. El dashboard de proyectos llegará en la Phase 2.
           </p>
           <div className="flex gap-4 mt-4">
-            <Link to="/project/3063e722-13f3-4e76-802a-bd3f80388a6e/kanban" className="btn-primary no-underline px-6">
+            <Link to="/project/573e83ec-06fa-4c93-88d1-a7047fc3c278/kanban" className="btn-primary no-underline px-6">
               Ver Proyecto NEX (Demo)
             </Link>
           </div>

@@ -110,6 +110,45 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     
         return Response({"message": "Columnas reordenadas exitosamente."}, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['get'])
+    def velocity(self, request, pk=None):
+        """
+        Retorna la velocidad del equipo (story points planificados vs completados) por sprint.
+        Solo accesible para Propietarios y Administradores.
+        """
+        project = self.get_object()
+        
+        # Verificar permisos de rol (HU-31)
+        try:
+            member = Member.objects.get(project=project, user=request.user)
+            if member.role not in ['owner', 'admin']:
+                return Response(
+                    {"error": "No tienes permiso para ver reportes. Se requiere rol Admin o Propietario."}, 
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except Member.DoesNotExist:
+            return Response({"error": "No eres miembro de este proyecto."}, status=status.HTTP_403_FORBIDDEN)
+        
+        from apps.tasks.models import Sprint, Task
+        from django.db.models import Sum, Q
+        
+        # Obtener todos los sprints del proyecto
+        sprints = Sprint.objects.filter(project=project).order_by('created_at')
+        
+        data = []
+        for s in sprints:
+            stats = Task.objects.filter(sprint=s).aggregate(
+                planned=Sum('story_points', default=0),
+                completed=Sum('story_points', filter=Q(column__is_done_column=True), default=0)
+            )
+            data.append({
+                "name": s.name,
+                "planned": stats['planned'] or 0,
+                "completed": stats['completed'] or 0
+            })
+            
+        return Response(data)
+
 
 class ColumnViewSet(viewsets.ModelViewSet):
     """

@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { LogOut, ChevronRight, LayoutDashboard, Settings, ListTodo } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 
 export function Navbar() {
   const location = useLocation()
@@ -83,6 +84,7 @@ export function Navbar() {
 
       {/* Right: user actions */}
       <div className="flex items-center gap-2">
+        <NotificationBell />
         <button
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors p-2 rounded-md hover:bg-white/5"
           title="Ajustes"

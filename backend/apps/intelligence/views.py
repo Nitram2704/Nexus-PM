@@ -211,3 +211,87 @@ class RecommendationUpdateView(views.APIView):
             return response.Response(RecommendationSerializer(rec).data)
             
         return response.Response({"error": "Estado inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+class ProjectChatView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def post(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        message = request.data.get('message')
+        history = request.data.get('history', [])
+        
+        if not message:
+            return response.Response({"error": "Mensaje requerido"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Build project context
+        tasks = Task.objects.filter(project=project)
+        context = f"Proyecto: {project.name}. Descripción: {project.description}. "
+        context += f"Tareas totales: {tasks.count()}. "
+        context += "Columnas: " + ", ".join([c.name for c in project.columns.all()])
+        
+        client = BacklogAIClient()
+        ai_response = client.chat_with_project(history, message, context)
+        
+        # Log de generación
+        AIGenerationLog.objects.create(
+            project=project,
+            user=request.user,
+            prompt_type='chat',
+            input_text=message,
+            output_text=ai_response
+        )
+        
+        return response.Response({"response": ai_response})
+
+class PrioritizeBacklogView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        """Genera una sugerencia de priorización"""
+        project = get_object_or_404(Project, id=project_id)
+        # Verificar permisos de objeto manualmente ya que es un APIView simple
+        self.check_object_permissions(request, project)
+        
+        # Solo priorizamos tareas que NO están en sprints activos
+        tasks_qs = Task.objects.filter(project=project, sprint__isnull=True)
+        tasks_count = tasks_qs.count()
+        
+        if tasks_count < 2:
+            return response.Response({
+                "error": f"No hay suficientes tareas en el backlog para priorizar (encontradas: {tasks_count}). Necesitas al menos 2."
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        tasks = tasks_qs.values('id', 'title', 'description', 'type', 'priority', 'story_points')
+        
+        # Convertir UUIDs a strings para evitar errores de serialización en el cliente de IA
+        tasks_list = []
+        for t in tasks:
+            t_copy = dict(t)
+            t_copy['id'] = str(t_copy['id'])
+            tasks_list.append(t_copy)
+
+        client = BacklogAIClient()
+        try:
+            suggestion = client.prioritize_backlog(tasks_list)
+        except Exception as e:
+            print(f"CRITICAL ERROR in AI Prioritization: {e}")
+            return response.Response({"error": "Error interno al procesar la priorización."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        if not suggestion:
+            return response.Response({"error": "La IA no pudo generar una sugerencia válida. Revisa los logs."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return response.Response(suggestion)
+
+    def post(self, request, project_id):
+        """Aplica la priorización sugerida"""
+        project = get_object_or_404(Project, id=project_id)
+        ordered_ids = request.data.get('ordered_ids', [])
+        
+        if not ordered_ids:
+            return response.Response({"error": "Lista de IDs requerida."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Actualizar el campo 'order' de las tareas
+        for index, task_id in enumerate(ordered_ids):
+            Task.objects.filter(id=task_id, project=project).update(order=index)
+            
+        return response.Response({"message": "Priorización aplicada correctamente."})

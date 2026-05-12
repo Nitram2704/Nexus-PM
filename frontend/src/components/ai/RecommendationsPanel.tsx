@@ -20,7 +20,7 @@ export default function RecommendationsPanel({ projectId, isOpen, onClose }: Rec
     try {
       setLoading(true)
       const data = await getRecommendationsApi(projectId)
-      setRecommendations(data)
+      setRecommendations(Array.isArray(data) ? data : [])
     } catch (err) {
       setError('Error al cargar recomendaciones.')
     } finally {

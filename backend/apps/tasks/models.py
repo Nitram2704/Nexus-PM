@@ -93,6 +93,7 @@ class Task(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     order = models.PositiveIntegerField(default=0)
 
@@ -101,6 +102,18 @@ class Task(models.Model):
 
     def __str__(self):
         return f"[{self.key}] {self.title}"
+
+    def save(self, *args, **kwargs):
+        # Si la columna es "Done" y no tenía fecha de completado, ponerla ahora
+        if self.column and self.column.is_done_column:
+            if not self.completed_at:
+                from django.utils import timezone
+                self.completed_at = timezone.now()
+        else:
+            # Si se mueve fuera de "Done", limpiar la fecha
+            self.completed_at = None
+            
+        super().save(*args, **kwargs)
 
 class Comment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

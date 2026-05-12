@@ -50,7 +50,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
             
             const initial = new Set<string>()
             if (genMode === 'backlog') {
-                data.data.forEach((epic: any, eIdx: number) => {
+                data.data.forEach((epic: { items: any[] }, eIdx: number) => {
                     epic.items.forEach((_: any, iIdx: number) => {
                         initial.add(`${eIdx}-${iIdx}`)
                     })
@@ -64,7 +64,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
             }
             setSelectedIndices(initial)
             setStep('results')
-        } catch (err) {
+        } catch (_err) {
             toast.error('Error al generar las sugerencias. Intenta de nuevo.')
             setStep('input')
         }
@@ -117,7 +117,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
             toast.success(`${selectedIndices.size} tareas importadas con éxito ✨`)
             onSuccess()
             onClose()
-        } catch (err) {
+        } catch (_err) {
             toast.error('Error al importar las tareas.')
         } finally {
             setIsImporting(false)
@@ -199,14 +199,14 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
                     <div className="max-h-[450px] overflow-y-auto pr-2 flex flex-col gap-4">
                         {mode === 'backlog' ? (
                             // Renderizado de Backlog (Épicas)
-                            proposal.data.map((epic: any, eIdx: number) => (
+                            (proposal.data as any[]).map((epic: { epic: string, items: any[] }, eIdx: number) => (
                                 <div key={eIdx} className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
                                         <Layout size={14} className="text-blue-400" />
                                         <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">{epic.epic}</h4>
                                     </div>
                                     <div className="flex flex-col gap-2">
-                                        {epic.items.map((item: any, iIdx: number) => {
+                                        {epic.items.map((item: { title: string, priority: string, description: string }, iIdx: number) => {
                                             const key = `${eIdx}-${iIdx}`
                                             return (
                                                 <div 
@@ -422,6 +422,17 @@ function StoryEditor({ item, onSave, onCancel }: { item: AIStoryProposal, onSave
         setEditItem({ ...editItem, acceptance_criteria: newACs })
     }
 
+    const handleAddAC = () => {
+        const newACs = [...(editItem.acceptance_criteria || []), '']
+        setEditItem({ ...editItem, acceptance_criteria: newACs })
+    }
+
+    const handleRemoveAC = (idx: number) => {
+        const newACs = [...(editItem.acceptance_criteria || [])]
+        newACs.splice(idx, 1)
+        setEditItem({ ...editItem, acceptance_criteria: newACs })
+    }
+
     return (
         <div className="flex flex-col gap-4 py-2" onClick={(e) => e.stopPropagation()}>
             <div className="flex flex-col gap-1.5">
@@ -461,7 +472,15 @@ function StoryEditor({ item, onSave, onCancel }: { item: AIStoryProposal, onSave
             </div>
 
             <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Criterios de Aceptación</label>
+                <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Criterios de Aceptación</label>
+                    <button 
+                        className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                        onClick={handleAddAC}
+                    >
+                        <Plus size={12} /> Añadir
+                    </button>
+                </div>
                 <div className="flex flex-col gap-2">
                     {editItem.acceptance_criteria?.map((ac, acIdx) => (
                         <div key={acIdx} className="flex gap-2">
@@ -469,9 +488,19 @@ function StoryEditor({ item, onSave, onCancel }: { item: AIStoryProposal, onSave
                                 className="edit-input text-xs" 
                                 value={ac} 
                                 onChange={(e) => handleACChange(acIdx, e.target.value)}
+                                placeholder="Describa el criterio..."
                             />
+                            <button 
+                                className="p-1 text-slate-500 hover:text-red-400"
+                                onClick={() => handleRemoveAC(acIdx)}
+                            >
+                                <Trash2 size={12} />
+                            </button>
                         </div>
                     ))}
+                    {(!editItem.acceptance_criteria || editItem.acceptance_criteria.length === 0) && (
+                        <p className="text-[10px] text-slate-500 italic">No hay criterios definidos.</p>
+                    )}
                 </div>
             </div>
 

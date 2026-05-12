@@ -5,6 +5,12 @@ class IsProjectMember(permissions.BasePermission):
     """
     Permite acceso solo a usuarios que son miembros del proyecto.
     """
+    def has_permission(self, request, view):
+        project_id = view.kwargs.get('project_id')
+        if project_id:
+            return Member.objects.filter(project_id=project_id, user=request.user).exists()
+        return True
+
     def has_object_permission(self, request, view, obj):
         # Si el objeto es el Proyecto mismo
         if hasattr(obj, 'members'):

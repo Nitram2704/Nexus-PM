@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles } from 'lucide-react'
+import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles, MessageSquare } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { Modal } from '@/components/Modal'
 import { getSprintsApi, createSprintApi, startSprintApi, completeSprintApi } from '@/api/sprints'
 import { getTasksApi, createTaskApi, updateTaskApi } from '@/api/tasks'
 import { AISuggestionModal } from '@/components/kanban/AISuggestionModal'
+import { AIPrioritizationModal } from '@/components/ai/AIPrioritizationModal'
+import { AIChatDrawer } from '@/components/ai/AIChatDrawer'
 import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { useProjectStore } from '@/store/projectStore'
@@ -21,9 +23,11 @@ export function BacklogPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [expandedSprints, setExpandedSprints] = useState<Record<string, boolean>>({})
   
-   const [isSprintModalOpen, setIsSprintModalOpen] = useState(false)
+  const [isSprintModalOpen, setIsSprintModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [isPrioritizationModalOpen, setIsPrioritizationModalOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [newTaskSprintId, setNewTaskSprintId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -119,7 +123,21 @@ export function BacklogPage() {
           >
             <Sparkles size={16} /> Generar con IA
           </button>
-          <button className="btn-primary" onClick={() => setIsSprintModalOpen(true)}>
+          <button 
+            className="btn-secondary flex items-center gap-2 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10"
+            onClick={() => setIsPrioritizationModalOpen(true)}
+          >
+            <Sparkles size={16} /> Priorizar con IA
+          </button>
+          <button 
+            className="btn-chat ml-2"
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            title="Chat con Nexus Agent"
+          >
+            <MessageSquare size={16} />
+            Chat
+          </button>
+          <button className="btn-primary ml-2" onClick={() => setIsSprintModalOpen(true)}>
             <Plus size={16} /> Crear Sprint
           </button>
         </div>
@@ -201,6 +219,21 @@ export function BacklogPage() {
         onClose={() => setIsAIModalOpen(false)}
         projectId={projectId!}
         onSuccess={loadData}
+      />
+
+      <AIPrioritizationModal
+        isOpen={isPrioritizationModalOpen}
+        onClose={() => setIsPrioritizationModalOpen(false)}
+        projectId={projectId!}
+        onSuccess={loadData}
+      />
+
+      <AIChatDrawer 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+        projectId={projectId || ''}
+        project={project}
+        onTaskCreated={loadData}
       />
 
       <style>{`
