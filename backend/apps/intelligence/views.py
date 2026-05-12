@@ -6,11 +6,12 @@ from apps.projects.models import Project
 from apps.projects.permissions import IsProjectMember
 from django.db import models
 
-from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage, ProposedAction
+from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage, ProposedAction, AIRecommendation
 from .serializers import (
     GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer,
-    ChatInputSerializer, ProposedActionSerializer
+    ChatInputSerializer, ProposedActionSerializer, AIRecommendationSerializer
 )
+
 from .client import BacklogAIClient
 from .agents.orchestrator import AgentOrchestrator
 from .foresight import ForesightEngine
@@ -462,3 +463,46 @@ class ProposedActionView(views.APIView):
             return response.Response({"status": "EXECUTED"})
         except Exception as e:
             return response.Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class AIRecommendationView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        recommendations = AIRecommendation.objects.filter(project=project)
+        return response.Response(AIRecommendationSerializer(recommendations, many=True).data)
+
+    def post(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        
+        # Check if we are updating a status
+        recommendation_id = request.data.get('id')
+        if recommendation_id:
+            recommendation = get_object_or_404(AIRecommendation, id=recommendation_id, project=project)
+            status_val = request.data.get('status')
+            if status_val in ['applied', 'discarded']:
+                recommendation.status = status_val
+                recommendation.save()
+                return response.Response({"status": status_val})
+        
+        # Otherwise, generate new recommendations
+        client = BacklogAIClient()
+        tasks = project.tasks.all().values('title', 'description', 'status', 'priority')
+        
+        # Build context for analysis
+        context = f"Project: {project.name}\nDescription: {project.description}\nTasks: {list(tasks)}"
+        
+        recommendations_data = client.generate_recommendations(context)
+        
+        created_recs = []
+        for rec in recommendations_data:
+            new_rec = AIRecommendation.objects.create(
+                project=project,
+                title=rec.get('title'),
+                description=rec.get('description'),
+                type=rec.get('type', 'improvement')
+            )
+            created_recs.append(new_rec)
+            
+        return response.Response(AIRecommendationSerializer(created_recs, many=True).data, status=status.HTTP_201_CREATED)

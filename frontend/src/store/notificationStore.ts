@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { api } from '@/api/axios'
+import apiClient from '@/lib/apiClient'
 
 export interface Notification {
   id: string
@@ -28,7 +28,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   fetchInitial: async () => {
     try {
-      const { data } = await api.get('/notifications/')
+      const { data } = await apiClient.get('/v1/notifications/')
       set({ 
         notifications: data,
         unreadCount: data.filter((n: Notification) => !n.is_read).length
@@ -65,7 +65,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: async (id: string) => {
     try {
-      await api.post(`/notifications/${id}/read/`)
+      await apiClient.post(`/v1/notifications/${id}/read/`)
       set((state) => {
         const nots = state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
         return {
@@ -78,7 +78,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAllRead: async () => {
     try {
-      await api.post('/notifications/mark-all-read/')
+      await apiClient.post('/v1/notifications/mark-all-read/')
       set((state) => {
         const nots = state.notifications.map(n => ({ ...n, is_read: true }))
         return {

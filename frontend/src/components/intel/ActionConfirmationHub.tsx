@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, ShieldAlert, Cpu, Layers } from 'lucide-react';
-import api from '@/api/client';
+import api from '@/lib/apiClient';
 
 interface ProposedAction {
   id: string;

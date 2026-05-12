@@ -1,6 +1,11 @@
 from rest_framework import serializers
 
-from .models import AIProposal, AIMessage, ProposedAction
+from .models import AIProposal, AIMessage, ProposedAction, AIRecommendation
+
+class AIRecommendationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIRecommendation
+        fields = ['id', 'title', 'description', 'type', 'status', 'created_at']
 
 class ProposedActionSerializer(serializers.ModelSerializer):
     class Meta:

@@ -246,6 +246,35 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
             print(f"Error en simulation analysis AI: {e}")
             return "No se pudo realizar el análisis táctico de simulación."
 
+    def generate_recommendations(self, context):
+        """Analiza el contexto del proyecto y sugiere mejoras, riesgos y consejos técnicos."""
+        if self.is_mock:
+            return [
+                {"title": "Optimizar Backend", "description": "Se detectan cuellos de botella en la API.", "type": "technical"},
+                {"title": "Riesgo de Deadline", "description": "La velocidad actual pone en riesgo el cierre.", "type": "risk"}
+            ]
+
+        prompt = f"""
+        {SYSTEM_PROMPT}
+        Analiza el siguiente contexto de proyecto y genera una lista de 3 a 5 recomendaciones.
+        Cada recomendación debe tener un 'title', 'description' y un 'type' (uno de: 'risk', 'improvement', 'technical').
+        
+        CONTEXTO:
+        {context}
+        
+        Retorna SOLO un JSON con el formato: [{{"title": "...", "description": "...", "type": "..."}}]
+        """
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Error en AI recommendations: {e}")
+            return []
+
     def _get_mock_stories(self, requirement):
         return [{"role": "Usuario", "action": "X", "benefit": "Y", "title": "Mock Story", "acceptance_criteria": ["C1"], "priority": "high", "type": "story"}]
 

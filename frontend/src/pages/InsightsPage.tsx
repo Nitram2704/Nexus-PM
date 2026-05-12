@@ -13,7 +13,7 @@ import { getProjectAnalytics, getHudAnalytics } from '@/api/analytics'
 import { motion } from 'framer-motion'
 import { SimulationControls } from '@/components/intel/SimulationControls'
 import ActionConfirmationHub from '@/components/intel/ActionConfirmationHub'
-import { api } from '@/api/client'
+import api from '@/lib/apiClient'
 
 export default function InsightsPage() {
   const { projectId } = useParams<{ projectId: string }>()

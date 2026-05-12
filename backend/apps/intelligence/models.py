@@ -65,3 +65,27 @@ class ProposedAction(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+class AIRecommendation(models.Model):
+    TYPE_CHOICES = [
+        ('risk', 'Risk'),
+        ('improvement', 'Improvement'),
+        ('technical', 'Technical'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('applied', 'Applied'),
+        ('discarded', 'Discarded'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='ai_recommendations')
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
