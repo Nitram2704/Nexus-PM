@@ -1,8 +1,13 @@
 from rest_framework import serializers
-from .models import Project, Member, Column
+from .models import Project, Member, Column, ProjectMetricSnapshot
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
+
+class ProjectMetricSnapshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectMetricSnapshot
+        fields = '__all__'
 
 class MemberSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)

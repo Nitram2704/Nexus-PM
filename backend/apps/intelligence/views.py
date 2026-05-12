@@ -1,12 +1,186 @@
 from rest_framework import views, status, response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+<<<<<<< HEAD
 from ..projects.models import Project
 from ..projects.permissions import IsProjectMember
 from .models import AIProposal, AIGenerationLog, Recommendation
 from .serializers import GenerateBacklogSerializer, AIProposalSerializer, RecommendationSerializer
 from .client import BacklogAIClient
 from ..tasks.models import Task
+=======
+import json
+from apps.projects.models import Project
+from apps.projects.permissions import IsProjectMember
+from django.db import models
+
+from .models import AIProposal, AIGenerationLog, AIConversation, AIMessage, ProposedAction
+from .serializers import (
+    GenerateBacklogSerializer, AIProposalSerializer, AIMessageSerializer, 
+    ChatInputSerializer, ProposedActionSerializer
+)
+from .client import BacklogAIClient
+from .agents.orchestrator import AgentOrchestrator
+from .foresight import ForesightEngine
+from apps.tasks.models import Task
+from apps.notifications.models import Notification
+import threading
+
+class ChatView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def post(self, request, project_id):
+        # Support for global chat or specific project
+        project = None
+        if project_id != 'global':
+            project = get_object_or_404(Project, id=project_id)
+            # Check permissions only if project exists
+            self.check_object_permissions(request, project)
+        
+        serializer = ChatInputSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            content = serializer.validated_data['content']
+            
+            # Get or create conversation (Global conversations use project=None)
+            conversation, _ = AIConversation.objects.get_or_create(
+                project=project,
+                user=request.user
+            )
+            
+            # Save user message
+            AIMessage.objects.create(
+                conversation=conversation,
+                role='user',
+                content=content
+            )
+            
+            # Build context (Project-specific or Global)
+            if project:
+                context = self._build_context(project)
+            else:
+                context = self._build_global_context(request.user)
+            
+            # Fetch last 10 messages for history
+            history_qs = conversation.messages.all().order_by('-created_at')[1:11]
+            history = [{'role': m.role, 'content': m.content} for m in reversed(list(history_qs))]
+
+            # Call AI
+            client = BacklogAIClient()
+            ai_response_text = client.chat(content, context, history=history)
+            
+            # Detect EXEC_ACTION
+            action_metadata = None
+            if 'EXEC_ACTION:' in ai_response_text:
+                parts = ai_response_text.split('EXEC_ACTION:')
+                ai_response_text = parts[0].strip()
+                try:
+                    action_metadata = json.loads(parts[1].strip())
+                except:
+                    pass
+
+            # Save AI response
+            ai_msg = AIMessage.objects.create(
+                conversation=conversation,
+                role='assistant',
+                content=ai_response_text,
+                action_metadata=action_metadata
+            )
+            
+            # If there's an action, create a ProposedAction entry
+            if action_metadata:
+                ProposedAction.objects.create(
+                    project=project,
+                    user=request.user,
+                    message=ai_msg,
+                    action_type=action_metadata.get('action', 'UNKNOWN'),
+                    params=action_metadata.get('params', {}),
+                    status='PENDING'
+                )
+            
+            conversation.save()
+            return response.Response(AIMessageSerializer(ai_msg).data, status=status.HTTP_201_CREATED)
+        
+        return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def _build_context(self, project):
+        tasks = project.tasks.all()
+        active_sprint = project.sprints.filter(status='active').first()
+        
+        # User Workload
+        user_workload = tasks.values('assignee__first_name', 'assignee__email').annotate(
+            count=models.Count('id'),
+            points=models.Sum('story_points')
+        )
+        
+        load_summary = []
+        for uw in user_workload:
+            name = uw['assignee__first_name'] or uw['assignee__email'] or "Sin asignar"
+            load_summary.append(f"- {name}: {uw['count']} tareas ({uw['points'] or 0} pts)")
+
+        # Column Distribution (Bottlenecks)
+        col_dist = tasks.values('column__name').annotate(count=models.Count('id'))
+        bottlenecks = [f"- {c['column__name']}: {c['count']}" for c in col_dist]
+
+        # Recent Activity (last 5 movements/creations)
+        # Assuming Task model has a history or just use last created/updated
+        recent_tasks = tasks.order_by('-updated_at')[:5]
+        activity = [f"- {t.title}: {t.column.name} (Modificado {t.updated_at.strftime('%H:%M')})" for t in recent_tasks]
+
+        context = f"""
+        PROYECTO: {project.name} ({project.key})
+        SPRINT ACTIVO: {active_sprint.name if active_sprint else 'Ninguno'}
+        
+        ACTIVIDAD RECIENTE:
+        {chr(10).join(activity)}
+
+        DISTRIBUCIÓN DE CARGA POR EQUIPO:
+        {chr(10).join(load_summary)}
+        
+        ESTADO DEL TABLERO (COLUMNAS):
+        {chr(10).join(bottlenecks)}
+        
+        RESUMEN TOTAL:
+        - Tareas totales: {tasks.count()}
+        - Tareas completadas: {tasks.filter(column__name__icontains='done').count() or tasks.filter(column__name__icontains='completado').count()}
+        - Tareas en progreso: {tasks.filter(column__name__icontains='progreso').count() or tasks.filter(column__name__icontains='progress').count()}
+        """
+        return context
+
+    def _build_global_context(self, user):
+        projects = Project.objects.filter(members=user)
+        project_summaries = []
+        
+        for p in projects:
+            task_count = p.tasks.count()
+            done_count = p.tasks.filter(column__name__icontains='done').count() or p.tasks.filter(column__name__icontains='completado').count()
+            project_summaries.append(f"- {p.name} ({p.key}): {task_count} tareas, {done_count} completadas.")
+
+        context = f"""
+        CONTEXTO_GLOBAL: El usuario no tiene un proyecto seleccionado actualmente (Dashboard).
+        
+        PROYECTOS_DEL_USUARIO:
+        {chr(10).join(project_summaries)}
+        
+        INSTRUCCIÓN: Responde de forma general sobre el estado de su portafolio o asiste en la selección de un proyecto.
+        """
+        return context
+
+class ChatHistoryView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        conversation = AIConversation.objects.filter(project=project, user=request.user).first()
+        
+        if not conversation:
+            return response.Response([], status=status.HTTP_200_OK)
+            
+        messages = conversation.messages.all().order_by('created_at')
+        return response.Response(AIMessageSerializer(messages, many=True).data)
+>>>>>>> 75dcd634406652f743a9e246acf56553516793f5
 
 class GenerateBacklogView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]
@@ -148,12 +322,17 @@ class ImportProposalView(views.APIView):
             column=proposal.project.columns.first()
         )
 
+<<<<<<< HEAD
 class GenerateRecommendationsView(views.APIView):
+=======
+class OrchestrateEpicView(views.APIView):
+>>>>>>> 75dcd634406652f743a9e246acf56553516793f5
     permission_classes = [IsAuthenticated, IsProjectMember]
 
     def post(self, request, project_id):
         project = get_object_or_404(Project, id=project_id)
         
+<<<<<<< HEAD
         # Build project summary
         tasks = Task.objects.filter(project=project)
         total_tasks = tasks.count()
@@ -191,10 +370,54 @@ class GenerateRecommendationsView(views.APIView):
         )
 
 class RecommendationListView(views.APIView):
+=======
+        # We assume the user passes {"epic_description": "We need a dashboard"}
+        epic_description = request.data.get('epic_description')
+        if not epic_description:
+            return response.Response({"error": "epic_description is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Spin up a thread to avoid blocking the HTTP request
+        user = request.user
+        def run_orchestration():
+            orchestrator = AgentOrchestrator()
+            tasks_data = orchestrator.orchestrate_epic(epic_description)
+            
+            # Auto-save tasks
+            column = project.columns.first()
+            created_count = 0
+            for t in tasks_data:
+                Task.objects.create(
+                    project=project,
+                    title=t.get('title', 'AI Proposed Task'),
+                    description=t.get('description', ''),
+                    type=t.get('type', 'task'),
+                    priority=t.get('priority', 'medium'),
+                    creator=user,
+                    column=column,
+                    ai_assignee=t.get('ai_assignee')
+                )
+                created_count += 1
+            
+            # Send Notification via Database (which the SSE stream picks up!)
+            Notification.objects.create(
+                user=user,
+                type='success',
+                title='Agentes Finalizaron',
+                content=f'La orquestación de "{epic_description[:20]}..." completó. {created_count} tareas fueron añadidas al backlog.'
+            )
+
+        thread = threading.Thread(target=run_orchestration)
+        thread.start()
+
+        return response.Response({"message": "Orchestration started. You will be notified when complete."}, status=status.HTTP_202_ACCEPTED)
+
+class ForesightView(views.APIView):
+>>>>>>> 75dcd634406652f743a9e246acf56553516793f5
     permission_classes = [IsAuthenticated, IsProjectMember]
 
     def get(self, request, project_id):
         project = get_object_or_404(Project, id=project_id)
+<<<<<<< HEAD
         recs = Recommendation.objects.filter(project=project)
         return response.Response(RecommendationSerializer(recs, many=True).data)
 
@@ -213,10 +436,24 @@ class RecommendationUpdateView(views.APIView):
         return response.Response({"error": "Estado inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProjectChatView(views.APIView):
+=======
+        engine = ForesightEngine(project)
+        foresight_data = engine.get_sprint_foresight()
+        
+        # Generar recomendación de IA si el riesgo es alto o si el usuario lo solicita implícitamente
+        ai_client = BacklogAIClient()
+        recommendation = ai_client.get_foresight_recommendation(foresight_data)
+        foresight_data['ai_recommendation'] = recommendation
+
+        return response.Response(foresight_data)
+
+class SimulationView(views.APIView):
+>>>>>>> 75dcd634406652f743a9e246acf56553516793f5
     permission_classes = [IsAuthenticated, IsProjectMember]
 
     def post(self, request, project_id):
         project = get_object_or_404(Project, id=project_id)
+<<<<<<< HEAD
         message = request.data.get('message')
         history = request.data.get('history', [])
         
@@ -295,3 +532,61 @@ class PrioritizeBacklogView(views.APIView):
             Task.objects.filter(id=task_id, project=project).update(order=index)
             
         return response.Response({"message": "Priorización aplicada correctamente."})
+=======
+        
+        capacity = float(request.data.get('capacity', 1.0))
+        scope = float(request.data.get('scope', 1.0))
+        deadline_shift = int(request.data.get('deadline_shift', 0))
+        
+        engine = ForesightEngine(project)
+        simulation_data = engine.run_simulation(
+            capacity_multiplier=capacity,
+            scope_multiplier=scope,
+            deadline_shift_days=deadline_shift
+        )
+        
+        ai_client = BacklogAIClient()
+        simulation_data['ai_analysis'] = ai_client.get_simulation_analysis(simulation_data)
+        
+        return response.Response(simulation_data)
+
+class ProposedActionView(views.APIView):
+    permission_classes = [IsAuthenticated, IsProjectMember]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        actions = ProposedAction.objects.filter(project=project, status='PENDING')
+        return response.Response(ProposedActionSerializer(actions, many=True).data)
+
+    def post(self, request, project_id, action_id):
+        project = get_object_or_404(Project, id=project_id)
+        action = get_object_or_404(ProposedAction, id=action_id, project=project)
+        
+        approve = request.data.get('approve', True)
+        
+        if not approve:
+            action.status = 'REJECTED'
+            action.save()
+            return response.Response({"status": "REJECTED"})
+
+        # Execute Action
+        try:
+            if action.action_type == 'CREATE_TASK':
+                params = action.params
+                Task.objects.create(
+                    project=project,
+                    title=params.get('title', 'AI Task'),
+                    description=params.get('description', ''),
+                    type=params.get('type', 'task'),
+                    priority=params.get('priority', 'medium'),
+                    creator=request.user,
+                    column=project.columns.first()
+                )
+            
+            action.status = 'EXECUTED'
+            action.save()
+            return response.Response({"status": "EXECUTED"})
+        except Exception as e:
+            return response.Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+>>>>>>> 75dcd634406652f743a9e246acf56553516793f5

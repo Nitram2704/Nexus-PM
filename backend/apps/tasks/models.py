@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from ..projects.models import Project, Column
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 import uuid
 
 class Sprint(models.Model):
@@ -56,6 +57,15 @@ class Task(models.Model):
         ('low', 'Baja'),
     ]
 
+    AI_AGENT_CHOICES = [
+        ('orchestrator', 'Orchestrator'),
+        ('backend_architect', 'Backend Architect'),
+        ('frontend_specialist', 'Frontend Specialist'),
+        ('database_expert', 'Database Expert'),
+        ('ui_designer', 'UI Designer'),
+        ('product_manager', 'Product Manager'),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
     sprint = models.ForeignKey(Sprint, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks')
@@ -75,6 +85,13 @@ class Task(models.Model):
         null=True, 
         blank=True, 
         related_name='assigned_tasks'
+    )
+    ai_assignee = models.CharField(
+        max_length=50, 
+        choices=AI_AGENT_CHOICES, 
+        blank=True, 
+        null=True,
+        help_text="If assigned to an AI agent, specify the agent role."
     )
     creator = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
@@ -96,6 +113,13 @@ class Task(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     order = models.PositiveIntegerField(default=0)
+
+    def save(self, *args, **kwargs):
+        if self.column and self.column.is_done_column and not self.completed_at:
+            self.completed_at = timezone.now()
+        elif self.column and not self.column.is_done_column:
+            self.completed_at = None
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['order', '-created_at']

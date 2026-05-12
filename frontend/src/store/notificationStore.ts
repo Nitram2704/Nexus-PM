@@ -1,95 +1,91 @@
 import { create } from 'zustand'
-import type { Notification } from '@/lib/notificationsService'
-import { notificationsService } from '@/lib/notificationsService'
-import toast from 'react-hot-toast'
+import { api } from '@/api/axios'
+
+export interface Notification {
+  id: string
+  type: string
+  title: string
+  content: string
+  link?: string
+  is_read: boolean
+  created_at: string
+}
 
 interface NotificationState {
   notifications: Notification[]
   unreadCount: number
-  loading: boolean
-  lastFetched: number | null
-  
-  fetchNotifications: () => Promise<void>
+  isConnected: boolean
+  fetchInitial: () => Promise<void>
+  connectSSE: () => void
   markAsRead: (id: string) => Promise<void>
-  markAllAsRead: () => Promise<void>
-  startPolling: () => () => void
+  markAllRead: () => Promise<void>
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
   notifications: [],
   unreadCount: 0,
-  loading: false,
-  lastFetched: null,
+  isConnected: false,
 
-  fetchNotifications: async () => {
-    set({ loading: true })
+  fetchInitial: async () => {
     try {
-      const data = await notificationsService.getNotifications()
-      const unreadCount = data.filter(n => !n.is_read).length
-      
-      // Si hay nuevas notificaciones (comparando con el estado anterior)
-      // podríamos disparar un toast aquí si no es el primer fetch
-      const previousNotifications = get().notifications
-      if (previousNotifications.length > 0 && data.length > previousNotifications.length) {
-        const newOnes = data.filter(n => !previousNotifications.find(pn => pn.id === n.id))
-        newOnes.forEach(n => {
-          toast.success(n.message, {
-            duration: 5000,
-            position: 'top-right',
-            icon: '🔔'
-          })
-        })
-      }
-
+      const { data } = await api.get('/notifications/')
       set({ 
-        notifications: data, 
-        unreadCount, 
-        loading: false, 
-        lastFetched: Date.now() 
+        notifications: data,
+        unreadCount: data.filter((n: Notification) => !n.is_read).length
       })
     } catch (error) {
-      console.error('Error fetching notifications:', error)
-      set({ loading: false })
+      console.error('Failed to fetch notifications', error)
     }
+  },
+
+  connectSSE: () => {
+    if (get().isConnected) return
+
+    // Note: EventSource doesn't support Authorization header natively in browser.
+    // In a real app with JWT, we either append token to URL ?token=... or use fetch-event-source
+    // For simplicity locally, assuming cookies or ignoring auth for stream, 
+    // or using a library like @microsoft/fetch-event-source.
+    // Let's implement a standard fallback polling if EventSource auth is strictly JWT.
+    // For local Nexus: we'll just poll every 5s to avoid auth issues with EventSource.
+    
+    set({ isConnected: true })
+    setInterval(async () => {
+      await get().fetchInitial()
+    }, 5000)
+    
+    // NOTE: If using true EventSource, it would look like:
+    /*
+    const source = new EventSource('http://localhost:8000/api/notifications/stream/')
+    source.onmessage = (e) => {
+       const newNots = JSON.parse(e.data)
+       // append and set unread..
+    }
+    */
   },
 
   markAsRead: async (id: string) => {
     try {
-      await notificationsService.markAsRead(id)
-      const notifications = get().notifications.map(n => 
-        n.id === id ? { ...n, is_read: true } : n
-      )
-      set({ 
-        notifications, 
-        unreadCount: notifications.filter(n => !n.is_read).length 
+      await api.post(`/notifications/${id}/read/`)
+      set((state) => {
+        const nots = state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
+        return {
+          notifications: nots,
+          unreadCount: nots.filter(n => !n.is_read).length
+        }
       })
-    } catch (error) {
-      console.error('Error marking notification as read:', error)
-    }
+    } catch (e) {}
   },
 
-  markAllAsRead: async () => {
+  markAllRead: async () => {
     try {
-      await notificationsService.markAllAsRead()
-      const notifications = get().notifications.map(n => ({ ...n, is_read: true }))
-      set({ 
-        notifications, 
-        unreadCount: 0 
+      await api.post('/notifications/mark-all-read/')
+      set((state) => {
+        const nots = state.notifications.map(n => ({ ...n, is_read: true }))
+        return {
+          notifications: nots,
+          unreadCount: 0
+        }
       })
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error)
-    }
-  },
-
-  startPolling: () => {
-    // Polling cada 30 segundos
-    const interval = setInterval(() => {
-      get().fetchNotifications()
-    }, 30000)
-
-    // Initial fetch
-    get().fetchNotifications()
-
-    return () => clearInterval(interval)
+    } catch (e) {}
   }
 }))

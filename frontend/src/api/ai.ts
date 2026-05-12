@@ -40,51 +40,25 @@ export const importProposalApi = async (projectId: string, proposalId: string, s
     return response.data
 }
 
-export interface AIRecommendation {
+export interface AIMessage {
     id: string
-    title: string
-    description: string
-    type: 'risk' | 'improvement' | 'technical'
-    status: 'pending' | 'applied' | 'discarded'
+    role: 'user' | 'assistant'
+    content: string
     created_at: string
+    action_metadata?: any
 }
 
-export const generateRecommendationsApi = async (projectId: string) => {
-    const response = await apiClient.post<AIRecommendation[]>(`/v1/projects/${projectId}/ai/recommendations/generate/`)
+export const sendMessageApi = async (projectId: string, content: string) => {
+    const response = await apiClient.post<AIMessage>(`/v1/projects/${projectId}/ai/chat/`, { content })
     return response.data
 }
 
-export const getRecommendationsApi = async (projectId: string) => {
-    const response = await apiClient.get<AIRecommendation[]>(`/v1/projects/${projectId}/ai/recommendations/`)
+export const getChatHistoryApi = async (projectId: string) => {
+    const response = await apiClient.get<AIMessage[]>(`/v1/projects/${projectId}/ai/chat/history/`)
     return response.data
 }
 
-export const updateRecommendationApi = async (projectId: string, recommendationId: string, status: 'applied' | 'discarded') => {
-    const response = await apiClient.patch<AIRecommendation>(`/v1/projects/${projectId}/ai/recommendations/${recommendationId}/`, { status })
-    return response.data
-}
-
-export interface ChatMessage {
-    role: 'user' | 'model'
-    parts: { text: string }[]
-}
-
-export const projectChatApi = async (projectId: string, message: string, history: ChatMessage[]) => {
-    const response = await apiClient.post<{ response: string }>(`/v1/projects/${projectId}/ai/chat/`, { message, history })
-    return response.data
-}
-
-export interface AIPrioritizationSuggestion {
-    reasoning: string
-    ordered_ids: string[]
-}
-
-export const getBacklogPrioritizationApi = async (projectId: string) => {
-    const response = await apiClient.get<AIPrioritizationSuggestion>(`/v1/projects/${projectId}/ai/prioritize-backlog/`)
-    return response.data
-}
-
-export const applyBacklogPrioritizationApi = async (projectId: string, orderedIds: string[]) => {
-    const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/prioritize-backlog/`, { ordered_ids: orderedIds })
+export const orchestrateEpicApi = async (projectId: string, epicDescription: string) => {
+    const response = await apiClient.post<{ message: string }>(`/v1/projects/${projectId}/ai/orchestrate/`, { epic_description: epicDescription })
     return response.data
 }
