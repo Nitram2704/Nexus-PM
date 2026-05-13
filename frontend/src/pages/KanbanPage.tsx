@@ -18,7 +18,7 @@ import { BurndownChart } from '@/components/reports/BurndownChart'
 import { SprintAISummary } from '@/components/reports/SprintAISummary'
 import { Modal } from '@/components/Modal'
 import RecommendationsPanel from '@/components/ai/RecommendationsPanel'
-import { AIChatDrawer } from '@/components/ai/AIChatDrawer'
+import { useUIStore } from '@/store/uiStore'
 import { 
   renameColumnApi, 
   clearColumnTasksApi, 
@@ -45,7 +45,7 @@ export function KanbanPage() {
   const [isCreating, setIsCreating] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false)
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const { toggleIntelligence } = useUIStore()
   const [isReportsOpen, setIsReportsOpen] = useState(false)
   const [reportTab, setReportTab] = useState<'velocity' | 'burndown' | 'ai_summary'>('velocity')
   
@@ -362,16 +362,16 @@ export function KanbanPage() {
     <div className="kanban-wrapper">
       <header className="kanban-header">
         <div className="kanban-header-left">
-          <h1 className="kanban-project-title">{project?.name || 'Cargando...'}</h1>
+          <h1 className="kanban-project-title">{project?.name?.toUpperCase() || 'LOADING...'}</h1>
           <span className="kanban-project-key">{project?.key}</span>
           {activeSprint ? (
             <div className="active-sprint-badge">
               <span className="dot"></span>
-              {activeSprint.name}
+              {activeSprint.name.toUpperCase()}
             </div>
           ) : (
             <div className="no-sprint-badge">
-              Sin Sprint Activo
+              NO_ACTIVE_SPRINT
             </div>
           )}
         </div>
@@ -381,7 +381,7 @@ export function KanbanPage() {
             <Search size={14} className="search-icon" />
             <input 
               type="text" 
-              placeholder="Filtrar tareas..." 
+              placeholder="FILTER..." 
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               className="filter-input"
@@ -398,41 +398,41 @@ export function KanbanPage() {
             onClick={() => setOnlyMyTasks(!onlyMyTasks)}
           >
             <User size={14} />
-            Mis tareas
+            MY_TASKS
           </button>
         </div>
 
         <div className="kanban-header-actions">
           <button 
-            className="btn-secondary"
+            className="btn-tactical"
             onClick={() => setIsRecommendationsOpen(true)}
             title="Ver recomendaciones de la IA"
           >
-            Recomendaciones AI
+            AI_RECS
           </button>
           <button 
-            className="btn-chat"
-            onClick={() => setIsChatOpen(!isChatOpen)}
+            className="btn-tactical"
+            onClick={() => toggleIntelligence(true)}
             title="Chat con Nexus Agent"
           >
-            <MessageSquare size={16} />
-            Chat
+            <MessageSquare size={14} />
+            CHAT
           </button>
           <button 
             className="btn-ai"
             onClick={() => setIsAIModalOpen(true)}
             title="Generar historias o backlog con IA"
           >
-            ✨ Nexus AI
+            ✦ NEXUS_AI
           </button>
           <button 
-            className="btn-secondary"
+            className="btn-tactical"
             onClick={() => setIsReportsOpen(true)}
           >
-            <BarChart3 size={16} /> Reportes
+            <BarChart3 size={14} /> REPORTS
           </button>
           <button 
-            className="btn-primary"
+            className="btn-primary-tactical"
             onClick={() => {
               if (boardColumns.length > 0) {
                 setAddingTaskToColumn(boardColumns[0].id);
@@ -442,7 +442,7 @@ export function KanbanPage() {
               }
             }}
           >
-            <Plus size={16} /> Nuevo Ítem
+            <Plus size={14} /> NEW_ITEM
           </button>
         </div>
       </header>
@@ -681,13 +681,7 @@ export function KanbanPage() {
         />
       )}
 
-      <AIChatDrawer 
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        projectId={projectId || ''}
-        project={project}
-        onTaskCreated={loadProject}
-      />
+
 
       <ConfirmDialog 
         isOpen={confirmConfig.isOpen}
@@ -719,37 +713,37 @@ export function KanbanPage() {
         maxWidth="800px"
       >
         <div className="flex flex-col gap-6">
-          <div className="flex gap-2 p-1 bg-[#1a2235] border border-[#2a3655] rounded-lg self-start">
+          <div className="flex gap-1 p-1 border border-white/10 self-start">
             <button 
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              className={`px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest font-bold transition-all ${
                 reportTab === 'velocity' 
-                  ? 'bg-blue-500 text-white shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-cyan-400/10 text-cyan-400 border border-cyan-400/30' 
+                  : 'text-white/30 hover:text-white border border-transparent'
               }`}
               onClick={() => setReportTab('velocity')}
             >
-              Velocidad
+              VELOCITY
             </button>
             <button 
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+              className={`px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest font-bold transition-all ${
                 reportTab === 'burndown' 
-                  ? 'bg-indigo-500 text-white shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/30' 
+                  : 'text-white/30 hover:text-white border border-transparent'
               }`}
               onClick={() => setReportTab('burndown')}
             >
-              Burndown
+              BURNDOWN
             </button>
             <button 
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-4 py-1.5 text-[10px] font-mono uppercase tracking-widest font-bold transition-all flex items-center gap-2 ${
                 reportTab === 'ai_summary' 
-                  ? 'bg-purple-500 text-white shadow-lg' 
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-amber-400/10 text-amber-400 border border-amber-400/30' 
+                  : 'text-white/30 hover:text-white border border-transparent'
               }`}
               onClick={() => setReportTab('ai_summary')}
             >
-              <Sparkles size={14} />
-              Resumen AI
+              <Sparkles size={12} />
+              AI_SUMMARY
             </button>
           </div>
 
@@ -786,69 +780,75 @@ export function KanbanPage() {
       </Modal>
 
       <style>{`
-        .kanban-wrapper { height: calc(100vh - 60px); display: flex; flex-direction: column; background: var(--color-bg); }
-        .kanban-header { padding: 24px; display: flex; align-items: center; justify-content: space-between; }
+        .kanban-wrapper { height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--color-bg); }
+        .kanban-header { padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .kanban-header-left { display: flex; align-items: center; gap: 12px; }
         
         .kanban-filters {
           display: flex;
           align-items: center;
-          gap: 12px;
-          background: var(--color-surface-2);
-          padding: 6px 12px;
-          border-radius: 12px;
-          border: 1px solid var(--color-border);
+          gap: 8px;
+          border: 1px solid rgba(255,255,255,0.08);
+          padding: 4px 10px;
         }
 
         .search-container {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           position: relative;
         }
 
         .search-icon {
-          color: var(--color-text-muted);
+          color: rgba(255,255,255,0.2);
         }
 
         .filter-input {
           background: transparent;
           border: none;
-          color: var(--color-text-primary);
-          font-size: 0.875rem;
+          color: rgba(255,255,255,0.6);
+          font-family: var(--font-mono);
+          font-size: 10px;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
           outline: none;
-          width: 150px;
+          width: 120px;
           transition: width 0.2s;
         }
 
         .filter-input:focus {
-          width: 200px;
+          width: 180px;
+          color: rgba(255,255,255,0.8);
+        }
+
+        .filter-input::placeholder {
+          color: rgba(255,255,255,0.15);
         }
 
         .clear-filter {
           background: none;
           border: none;
-          color: var(--color-text-muted);
+          color: rgba(255,255,255,0.2);
           cursor: pointer;
           display: flex;
           padding: 2px;
-          border-radius: 50%;
         }
 
         .clear-filter:hover {
-          background: var(--color-surface);
-          color: var(--color-text-primary);
+          color: rgba(255,255,255,0.6);
         }
 
         .filter-chip {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 10px;
-          border-radius: 6px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--color-text-secondary);
+          gap: 4px;
+          padding: 3px 8px;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: rgba(255,255,255,0.25);
           background: transparent;
           border: 1px solid transparent;
           cursor: pointer;
@@ -856,104 +856,93 @@ export function KanbanPage() {
         }
 
         .filter-chip:hover {
-          background: var(--color-surface);
+          color: rgba(255,255,255,0.5);
         }
 
         .filter-chip.active {
-          background: rgba(59, 130, 246, 0.1);
-          border-color: rgba(59, 130, 246, 0.3);
-          color: var(--color-accent);
+          background: rgba(34, 211, 238, 0.08);
+          border-color: rgba(34, 211, 238, 0.25);
+          color: #22d3ee;
         }
 
-        .kanban-project-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary); }
-        .kanban-project-key { padding: 2px 8px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); }
-        .kanban-board-container { flex: 1; overflow-x: auto; padding: 0 24px 24px; }
-        .kanban-board { display: flex; gap: 20px; align-items: flex-start; height: 100%; min-width: max-content; }
-        .kanban-column { width: 300px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; display: flex; flex-direction: column; max-height: 100%; }
-        .column-header { padding: 16px; display: flex; align-items: center; justify-content: space-between; }
-        .column-title { font-size: 0.875rem; font-weight: 600; color: var(--color-text-primary); display: flex; align-items: center; gap: 8px; }
-        .column-count { font-size: 0.75rem; background: var(--color-surface-2); color: var(--color-text-muted); padding: 2px 8px; border-radius: 10px; }
-        .column-content { flex: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 100px; transition: background 0.2s; }
-        .column-content--active { background: rgba(59, 130, 246, 0.03); }
-        .task-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 8px; padding: 12px; cursor: grab; transition: all 0.2s; position: relative; }
-        .task-card:hover { border-color: var(--color-accent); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        .task-card--dragging { cursor: grabbing; border-color: var(--color-accent); box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 10; }
-        .task-priority-tag { font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
-        .task-priority-tag[data-priority="high"] { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
-        .task-priority-tag[data-priority="medium"] { background: rgba(59, 130, 246, 0.1); color: #93c5fd; }
-        .task-priority-tag[data-priority="low"] { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; }
-        .task-title { font-size: 0.9375rem; font-weight: 500; color: var(--color-text-primary); margin-bottom: 12px; line-height: 1.4; }
+        .kanban-project-title { font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 700; color: white; letter-spacing: 0.15em; }
+        .kanban-project-key { padding: 2px 6px; border: 1px solid rgba(255,255,255,0.08); font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25); letter-spacing: 0.1em; }
+        .kanban-board-container { flex: 1; overflow-x: auto; padding: 0 20px 20px; }
+        .kanban-board { display: flex; gap: 16px; align-items: flex-start; height: 100%; min-width: max-content; }
+        .kanban-column { width: 300px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; max-height: 100%; position: relative; }
+        .kanban-column::before { content: ''; position: absolute; top: 0; left: 0; width: 6px; height: 1px; background: rgba(34, 211, 238, 0.4); }
+        .column-header { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .column-title { font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.3); display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.2em; }
+        .column-count { font-family: var(--font-mono); font-size: 9px; background: transparent; color: rgba(255,255,255,0.15); padding: 1px 6px; border: 1px solid rgba(255,255,255,0.08); }
+        .column-content { flex: 1; padding: 6px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; min-height: 80px; transition: background 0.2s; }
+        .column-content--active { background: rgba(34, 211, 238, 0.02); }
+        .task-card { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-left: 2px solid transparent; padding: 10px 12px; cursor: grab; transition: all 0.15s; position: relative; }
+        .task-card:hover { border-color: rgba(255,255,255,0.1); border-left-color: rgba(34, 211, 238, 0.5); background: rgba(255,255,255,0.035); }
+        .task-card--dragging { cursor: grabbing; border-left-color: #22d3ee; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 10; }
+        .task-priority-tag { font-family: var(--font-mono); font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 1px 5px; display: inline-block; margin-bottom: 6px; }
+        .task-priority-tag[data-priority="high"] { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .task-priority-tag[data-priority="medium"] { background: rgba(34, 211, 238, 0.08); color: rgba(34, 211, 238, 0.7); border: 1px solid rgba(34, 211, 238, 0.15); }
+        .task-priority-tag[data-priority="low"] { background: rgba(16, 185, 129, 0.08); color: rgba(16, 185, 129, 0.7); border: 1px solid rgba(16, 185, 129, 0.15); }
+        .task-title { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); margin-bottom: 10px; line-height: 1.4; letter-spacing: -0.01em; }
         .task-footer { display: flex; align-items: center; justify-content: space-between; }
         .task-meta { display: flex; align-items: center; gap: 8px; }
-        .task-id { font-size: 0.75rem; color: var(--color-text-muted); }
-        .assignee-avatar { width: 24px; height: 24px; background: var(--color-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
-        .kanban-loading { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--color-text-secondary); }
-        .btn-secondary { display: flex; align-items: center; gap: 6px; background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; cursor: pointer; transition: all 0.2s; }
-        .active-sprint-badge { display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-left: 12px; }
-        .active-sprint-badge .dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
-        .no-active-sprint-warning { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--color-text-secondary); }
-        .no-active-sprint-warning h3 { font-size: 1.5rem; color: var(--color-text-primary); margin-bottom: 8px; }
-        .btn-primary { background: var(--color-accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+        .task-id { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.15); letter-spacing: 0.1em; }
+        .assignee-avatar { width: 20px; height: 20px; border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.2); }
+        .kanban-loading { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+        .kanban-loading p { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.3em; }
+        .btn-tactical { display: flex; align-items: center; gap: 6px; background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); padding: 5px 12px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .btn-tactical:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.02); }
+        .active-sprint-badge { display: flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.05); color: #10b981; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; }
+        .active-sprint-badge .dot { width: 4px; height: 4px; background: #10b981; box-shadow: 0 0 6px #10b981; }
+        .no-sprint-badge { padding: 3px 10px; border: 1px solid rgba(251, 191, 36, 0.2); background: rgba(251, 191, 36, 0.05); color: rgba(251, 191, 36, 0.6); font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; }
+        .no-active-sprint-warning { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .no-active-sprint-warning h3 { font-family: var(--font-mono); font-size: 0.875rem; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 8px; }
+        .no-active-sprint-warning p { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; }
+        .btn-primary-tactical { background: rgba(34, 211, 238, 0.1); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); padding: 5px 12px; display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .btn-primary-tactical:hover { background: rgba(34, 211, 238, 0.15); border-color: rgba(34, 211, 238, 0.5); }
         .mt-4 { margin-top: 1rem; }
         
-        .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
-        .btn-sm { padding: 4px 12px; font-size: 0.75rem; }
-        .btn-icon { background: none; border: none; color: var(--color-text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; }
-        .btn-icon:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+        .btn-primary { background: rgba(34, 211, 238, 0.1); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); padding: 5px 12px; display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .btn-primary:hover { background: rgba(34, 211, 238, 0.15); }
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-sm { padding: 3px 10px; font-size: 9px; }
+        .btn-icon { background: none; border: none; color: rgba(255,255,255,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; }
+        .btn-icon:hover { color: rgba(255,255,255,0.5); }
         
-        .add-task-inline { padding: 8px; background: var(--color-surface-2); border-radius: 8px; border: 1px solid var(--color-accent); margin-top: 8px; }
-        .add-task-input { width: 100%; border: none; background: transparent; color: var(--color-text-primary); font-size: 0.875rem; padding: 4px 0; margin-bottom: 8px; outline: none; }
-        .add-task-input::placeholder { color: var(--color-text-muted); }
+        .add-task-inline { padding: 8px; border: 1px solid rgba(34, 211, 238, 0.3); background: rgba(34, 211, 238, 0.03); margin-top: 4px; }
+        .add-task-input { width: 100%; border: none; background: transparent; color: rgba(255,255,255,0.7); font-family: var(--font-mono); font-size: 11px; padding: 4px 0; margin-bottom: 8px; outline: none; }
+        .add-task-input::placeholder { color: rgba(255,255,255,0.15); }
         .add-task-actions { display: flex; align-items: center; justify-content: space-between; }
         
-        .column-footer { padding: 8px 16px 16px; }
-        .btn-add-inline { width: 100%; background: transparent; border: none; color: var(--color-text-muted); font-size: 0.875rem; font-weight: 500; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-        .btn-add-inline:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
+        .column-footer { padding: 6px 12px 12px; }
+        .btn-add-inline { width: 100%; background: transparent; border: none; color: rgba(255,255,255,0.15); font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; display: flex; align-items: center; gap: 6px; padding: 6px; cursor: pointer; transition: all 0.15s; }
+        .btn-add-inline:hover { color: rgba(34, 211, 238, 0.6); }
         
         .btn-ai {
-          background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-          color: white;
-          border: none;
-          padding: 8px 16px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-          box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
-        }
-        .btn-ai:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
-          filter: brightness(1.1);
-        }
-
-        .btn-chat {
+          background: rgba(34, 211, 238, 0.1);
+          color: #22d3ee;
+          border: 1px solid rgba(34, 211, 238, 0.3);
+          padding: 5px 12px;
           display: flex;
           align-items: center;
           gap: 6px;
-          background: #334155;
-          border: 1px solid #475569;
-          color: white;
-          padding: 8px 16px;
-          border-radius: 8px;
-          font-size: 0.875rem;
-          font-weight: 600;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s;
         }
-
-        .btn-chat:hover {
-          background: #475569;
-          transform: translateY(-1px);
+        .btn-ai:hover {
+          background: rgba(34, 211, 238, 0.18);
+          border-color: rgba(34, 211, 238, 0.5);
         }
 
         .kanban-column--dragging {
-          box-shadow: 0 12px 48px rgba(0,0,0,0.4);
-          border-color: var(--color-accent);
-          background: var(--color-surface-2);
+          box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+          border-color: rgba(34, 211, 238, 0.3);
+          background: rgba(255,255,255,0.03);
         }
 
         .kanban-column-add {
@@ -963,49 +952,51 @@ export function KanbanPage() {
 
         .btn-add-column {
           width: 100%;
-          height: 54px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 2px dashed var(--color-border);
-          border-radius: 12px;
-          color: var(--color-text-secondary);
+          height: 48px;
+          background: transparent;
+          border: 1px dashed rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.15);
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 12px;
-          font-weight: 600;
+          gap: 8px;
+          font-family: var(--font-mono);
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s;
         }
 
         .btn-add-column:hover {
-          background: rgba(59, 130, 246, 0.05);
-          border-color: var(--color-accent);
-          color: var(--color-accent);
+          background: rgba(34, 211, 238, 0.03);
+          border-color: rgba(34, 211, 238, 0.3);
+          color: rgba(34, 211, 238, 0.6);
         }
 
         .add-column-form {
-          background: var(--color-surface);
-          border: 1px solid var(--color-accent);
-          border-radius: 12px;
-          padding: 16px;
+          border: 1px solid rgba(34, 211, 238, 0.3);
+          background: rgba(34, 211, 238, 0.03);
+          padding: 14px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
         }
 
         .add-column-input {
           width: 100%;
-          background: var(--color-surface-2);
-          border: 1px solid var(--color-border);
-          border-radius: 8px;
-          padding: 10px;
-          color: var(--color-text-primary);
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.08);
+          padding: 8px;
+          color: rgba(255,255,255,0.7);
           outline: none;
-          font-size: 0.875rem;
+          font-family: var(--font-mono);
+          font-size: 11px;
         }
 
         .add-column-input:focus {
-          border-color: var(--color-accent);
+          border-color: rgba(34, 211, 238, 0.4);
         }
 
         .add-column-actions {
@@ -1013,6 +1004,9 @@ export function KanbanPage() {
           align-items: center;
           justify-content: space-between;
         }
+
+        .btn-secondary { display: flex; align-items: center; gap: 6px; background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); padding: 5px 12px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .btn-secondary:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
       `}</style>
     </div>
   )

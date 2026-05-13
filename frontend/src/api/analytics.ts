@@ -17,7 +17,7 @@ export interface ProjectAnalytics {
 }
 
 export const getProjectAnalytics = async (projectId: string): Promise<ProjectAnalytics> => {
-  const response = await apiClient.get(`/projects/${projectId}/analytics/`);
+  const response = await apiClient.get(`/v1/projects/${projectId}/analytics/`);
   return response.data;
 };
 
@@ -33,6 +33,6 @@ export interface HUDMetric {
 }
 
 export const getHudAnalytics = async (projectId: string): Promise<HUDMetric[]> => {
-  const response = await apiClient.get(`/projects/${projectId}/hud_analytics/`);
+  const response = await apiClient.get(`/v1/projects/${projectId}/hud_analytics/`);
   return response.data;
 };

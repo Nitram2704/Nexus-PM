@@ -18,14 +18,14 @@ import api from '@/lib/apiClient'
 export default function InsightsPage() {
   const { projectId } = useParams<{ projectId: string }>()
 
-  const { data: summaryData, isLoading: isSummaryLoading, refetch: refetchSummary } = useQuery({
+  const { data: summaryData, isLoading: isSummaryLoading, isError: isSummaryError, refetch: refetchSummary } = useQuery({
     queryKey: ['project-analytics', projectId],
     queryFn: () => getProjectAnalytics(projectId!),
     enabled: !!projectId,
     refetchInterval: 60000
   })
 
-  const { data: hudData, isLoading: isHudLoading, refetch: refetchHud } = useQuery({
+  const { data: hudData, isLoading: isHudLoading, isError: isHudError, refetch: refetchHud } = useQuery({
     queryKey: ['project-hud-analytics', projectId],
     queryFn: () => getHudAnalytics(projectId!),
     enabled: !!projectId,
@@ -33,9 +33,19 @@ export default function InsightsPage() {
   })
 
   const runSimulation = async (params: { capacity: number; scope: number; deadline_shift: number }) => {
-    const res = await api.post(`/intelligence/projects/${projectId}/ai/simulate/`, params)
+    const res = await api.post(`/v1/projects/${projectId}/ai/simulate/`, params)
     return res.data
   }
+
+  if (isSummaryError || isHudError) return (
+    <div className="h-[80vh] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <Activity className="text-red-500 w-8 h-8" />
+        <span className="font-mono text-xs uppercase tracking-widest text-red-400">ERROR_ACCESSING_CORES</span>
+        <button onClick={() => { refetchSummary(); refetchHud(); }} className="mt-4 px-4 py-1 text-xs border border-red-500/50 text-red-500 hover:bg-red-500/10">REBOOT_SYSTEM</button>
+      </div>
+    </div>
+  )
 
   if (isSummaryLoading || isHudLoading) return (
     <div className="h-[80vh] flex items-center justify-center">
@@ -163,13 +173,21 @@ export default function InsightsPage() {
             </h2>
             <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={summaryData?.workload || []} layout="vertical">
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" horizontal={false} />
-                        <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" width={60} axisLine={false} tickLine={false} tick={{ fontSize: 6, fill: 'rgba(255,255,255,0.2)' }} />
-                        <Bar dataKey="tasks" fill="#10b981" radius={[0, 1, 1, 0]} opacity={0.4} barSize={10} />
-                        <Tooltip cursor={{ fill: 'rgba(16,185,129,0.05)' }} contentStyle={{ background: '#000', border: '1px solid rgba(16,185,129,0.2)', fontSize: '8px' }} />
-                    </BarChart>
+                    {summaryData?.workload && summaryData.workload.length > 0 ? (
+                        <BarChart data={summaryData.workload} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" horizontal={false} />
+                            <XAxis type="number" hide />
+                            <YAxis dataKey="name" type="category" width={60} axisLine={false} tickLine={false} tick={{ fontSize: 6, fill: 'rgba(255,255,255,0.2)' }} />
+                            <Bar dataKey="tasks" fill="#10b981" radius={[0, 1, 1, 0]} opacity={0.4} barSize={10} />
+                            <Tooltip cursor={{ fill: 'rgba(16,185,129,0.05)' }} contentStyle={{ background: '#000', border: '1px solid rgba(16,185,129,0.2)', fontSize: '8px' }} />
+                        </BarChart>
+                    ) : (
+                        <div className="h-full flex items-center justify-center border border-dashed border-white/5 bg-white/2">
+                            <span className="text-[9px] text-white/10 uppercase tracking-widest text-center px-4">
+                                NO_RESOURCE_DATA_FOUND<br/>[Assign Tasks to Initialize]
+                            </span>
+                        </div>
+                    )}
                 </ResponsiveContainer>
             </div>
             <div className="mt-4 flex items-center justify-between text-[6px] tracking-widest text-white/10 uppercase">
@@ -197,13 +215,19 @@ export default function InsightsPage() {
             </h2>
             <div className="flex-1 min-h-0">
                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={hudData}>
-                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" />
-                     <XAxis dataKey="date" hide />
-                     <YAxis hide />
-                     <Line type="stepAfter" dataKey="active_tasks_count" stroke="#22d3ee" strokeWidth={2} dot={false} strokeDasharray="5 5" />
-                     <Line type="stepAfter" dataKey="completed_tasks_count" stroke="#10b981" strokeWidth={2} dot={false} />
-                  </LineChart>
+                  {hudData && hudData.length > 0 ? (
+                      <LineChart data={hudData}>
+                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff04" />
+                         <XAxis dataKey="date" hide />
+                         <YAxis hide />
+                         <Line type="stepAfter" dataKey="active_tasks_count" stroke="#22d3ee" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                         <Line type="stepAfter" dataKey="completed_tasks_count" stroke="#10b981" strokeWidth={2} dot={false} />
+                      </LineChart>
+                  ) : (
+                      <div className="h-full flex items-center justify-center border border-dashed border-white/5 bg-white/2">
+                          <span className="text-[9px] text-white/10 uppercase tracking-widest">NO_THROUGHPUT_DETECTED</span>
+                      </div>
+                  )}
                </ResponsiveContainer>
             </div>
             <div className="flex justify-between mt-2 px-2">

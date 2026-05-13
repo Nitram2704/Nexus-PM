@@ -73,7 +73,7 @@ class DashboardTaskSerializer(serializers.Serializer):
     key = serializers.SerializerMethodField()
 
     def get_key(self, obj):
-        return f"{obj.project.key}-{obj.local_id}"
+        return obj.key
 
 
 class DashboardSummarySerializer(serializers.Serializer):
