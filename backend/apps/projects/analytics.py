@@ -32,6 +32,10 @@ class ProjectAnalytics:
             
         start_date = active_sprint.start_date
         end_date = active_sprint.end_date
+        
+        if not start_date or not end_date:
+            return []
+            
         total_days = (end_date - start_date).days + 1
         
         # Puntos totales al inicio
