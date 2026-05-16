@@ -6,9 +6,7 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  Area,
-  AreaChart
+  ResponsiveContainer
 } from 'recharts'
 import { Loader2, TrendingDown, AlertCircle, ShieldAlert } from 'lucide-react'
 import apiClient from '@/lib/apiClient'

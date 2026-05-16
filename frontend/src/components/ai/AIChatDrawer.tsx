@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, X, MessageSquare as Bot, User, Loader2, Plus, Zap as Sparkles } from 'lucide-react'
+import { Send, X, MessageSquare as Bot, Loader2, Plus, Zap as Sparkles } from 'lucide-react'
 import { projectChatApi, type ChatMessage } from '@/api/ai'
 import { createTaskApi } from '@/api/tasks'
 import type { Project } from '@/types/project'
