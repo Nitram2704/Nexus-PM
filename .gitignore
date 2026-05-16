@@ -3,6 +3,8 @@ node_modules/
 __pycache__/
 *.pyc
 db.sqlite3
+backend/postgres
+backend/postgres.bak
 .env
 .env.local
 *.egg-info/

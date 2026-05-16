@@ -2,8 +2,10 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 
 from .models import Project, Member, Column
 from .serializers import (
@@ -14,6 +16,7 @@ from .serializers import (
     ColumnSerializer
 )
 from .permissions import IsProjectMember, IsProjectOwnerOrAdmin
+from .analytics import ProjectAnalytics
 
 User = get_user_model()
 
@@ -52,9 +55,70 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['update', 'partial_update', 'destroy', 'invite']:
             return [IsAuthenticated(), IsProjectOwnerOrAdmin()]
-        if self.action in ['retrieve']:
+        if self.action in ['retrieve', 'analytics']:
             return [IsAuthenticated(), IsProjectMember()]
         return super().get_permissions()
+
+    @action(detail=True, methods=['get'])
+    def analytics(self, request, pk=None):
+        """
+        Retorna métricas avanzadas para el dashboard del proyecto.
+        - Distribución de prioridades.
+        - Carga de trabajo por usuario.
+        - Burndown Chart (Sprint activo).
+        - Velocidad y Cycle Time (Módulo Velocity Scan).
+        """
+        project = self.get_object()
+        from apps.tasks.models import Task, Sprint
+        
+        # Engine de analíticas avanzado
+        engine = ProjectAnalytics(project)
+        scan_data = engine.get_summary()
+
+        # 1. Prioridades
+        priority_counts = Task.objects.filter(project=project).values('priority').annotate(count=Count('id'))
+        priorities_data = {item['priority']: item['count'] for item in priority_counts}
+
+        # 2. Carga de trabajo (Tareas por usuario)
+        workload_counts = Task.objects.filter(project=project).values('assignee__first_name', 'assignee__email').annotate(count=Count('id'))
+        workload_data = [
+            {
+                "name": item['assignee__first_name'] or item['assignee__email'] or "Sin asignar",
+                "tasks": item['count']
+            } for item in workload_counts
+        ]
+
+        # 3. Datos de Sprint Activo
+        active_sprint = Sprint.objects.filter(project=project, status='active').first()
+
+        return Response({
+            "priorities": priorities_data,
+            "workload": workload_data,
+            "burndown": scan_data['burndown'],
+            "velocity": scan_data['velocity'],
+            "cycle_time": scan_data['cycle_time_days'],
+            "health_score": scan_data['health_score'],
+            "sprint_name": active_sprint.name if active_sprint else None
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'])
+    def hud_analytics(self, request, pk=None):
+        """
+        Retorna el historial de snapshots para los gráficos del HUD.
+        """
+        project = self.get_object()
+        from .models import ProjectMetricSnapshot
+        from .serializers import ProjectMetricSnapshotSerializer
+        from .analytics import ProjectAnalytics
+        
+        # Trigger calculation (actualización forzada para hoy)
+        engine = ProjectAnalytics(project)
+        engine.create_snapshot()
+        
+        snapshots = ProjectMetricSnapshot.objects.filter(project=project).order_by('date')
+        serializer = ProjectMetricSnapshotSerializer(snapshots, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], serializer_class=InviteMemberSerializer)
     def invite(self, request, pk=None):

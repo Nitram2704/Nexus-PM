@@ -1,153 +1,166 @@
-import { useState, useEffect, useRef } from 'react'
-import { Bell, Check, ExternalLink } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Bell, CheckCheck, Inbox } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+import { Link } from 'react-router-dom'
 import { useNotificationStore } from '@/store/notificationStore'
-import { useNavigate } from 'react-router-dom'
-import { formatDistanceToNow } from 'date-fns'
-import { es } from 'date-fns/locale'
-import { clsx } from 'clsx'
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true)
   
   const { 
     notifications, 
     unreadCount, 
+    fetchInitial, 
+    connectSSE, 
     markAsRead, 
-    markAllAsRead,
-    startPolling 
+    markAllRead 
   } = useNotificationStore()
 
-  useEffect(() => {
-    const stopPolling = startPolling()
-    return () => stopPolling()
-  }, [])
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const handleNotificationClick = async (n: any) => {
-    if (!n.is_read) {
-      await markAsRead(n.id)
-    }
-    
-    if (n.task) {
-      // Por ahora redirigimos al kanban del proyecto
-      // Si tuviéramos un store global de 'selectedTask', podríamos activarlo aquí
-      navigate(`/project/${n.project_id || 'active'}/kanban`)
-      setIsOpen(false)
+  const fetchNotifications = async () => {
+    try {
+      await fetchInitial()
+      connectSSE()
+    } finally {
+      setLoading(false)
     }
   }
 
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const handleMarkRead = async (id: string) => {
+    await markAsRead(id)
+  }
+
+  const handleMarkAllRead = async () => {
+    await markAllRead()
+  }
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={clsx(
-          "relative p-2 rounded-md transition-all duration-200",
-          isOpen ? "bg-white/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
-        )}
-        title="Notificaciones"
+        className={`relative p-1.5 transition-colors group ${
+          isOpen ? 'text-cyan-400' : 'text-white/40 hover:text-white'
+        }`}
       >
-        <Bell className={clsx("w-5 h-5", unreadCount > 0 && "animate-pulse")} />
+        <Bell className="w-3.5 h-3.5" />
         {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500 border border-[#1a2235]"></span>
+          <span className="absolute -top-0.5 -right-0.5 min-w-[12px] h-[12px] bg-cyan-500 text-black text-[7px] font-bold flex items-center justify-center px-0.5 border border-black animate-pulse">
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1a2235] border border-[#2a3655] rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in duration-200">
-          <div className="p-4 border-b border-[#2a3655] flex items-center justify-between bg-white/5">
-            <h3 className="font-semibold text-white flex items-center gap-2">
-              Notificaciones
-              {unreadCount > 0 && (
-                <span className="bg-blue-500/20 text-blue-400 text-[10px] px-1.5 py-0.5 rounded-full border border-blue-500/30">
-                  {unreadCount}
-                </span>
-              )}
-            </h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={() => markAllAsRead()}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-              >
-                <Check className="w-3 h-3" />
-                Marcar todas
-              </button>
-            )}
-          </div>
-
-          <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
-            {notifications.length === 0 ? (
-              <div className="p-10 text-center text-slate-500">
-                <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                <p className="text-sm">No tienes notificaciones</p>
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <div 
+              className="fixed inset-0 z-40" 
+              onClick={() => setIsOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              className="absolute right-0 mt-3 w-72 bg-black/80 backdrop-blur-2xl border border-white/10 z-50 shadow-2xl overflow-hidden"
+            >
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-white/2">
+                <h3 className="text-[9px] font-bold tracking-widest text-white flex items-center gap-2">
+                   <div className="w-1 h-1 bg-cyan-400"></div>
+                   INTERNAL_COMMS // PULSE
+                </h3>
+                {unreadCount > 0 && (
+                  <button 
+                    onClick={handleMarkAllRead}
+                    className="text-[8px] text-cyan-400/60 hover:text-cyan-400 flex items-center gap-1 transition-colors uppercase font-bold"
+                  >
+                    <CheckCheck className="w-2.5 h-2.5" />
+                    Archive_All
+                  </button>
+                )}
               </div>
-            ) : (
-              notifications.map((n) => (
-                <div
-                  key={n.id}
-                  onClick={() => handleNotificationClick(n)}
-                  className={clsx(
-                    "p-4 border-b border-[#2a3655] cursor-pointer transition-all hover:bg-white/5 relative group",
-                    !n.is_read && "bg-blue-500/[0.03]"
-                  )}
-                >
-                  {!n.is_read && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
-                  )}
-                  <div className="flex justify-between items-start gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className={clsx(
-                        "text-sm mb-0.5 line-clamp-1",
-                        n.is_read ? "text-slate-300" : "text-white font-medium"
-                      )}>
-                        {n.title}
-                      </p>
-                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                        {n.message}
-                      </p>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-[10px] text-slate-500">
-                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: es })}
-                        </span>
-                        {n.actor_name && (
-                          <>
-                            <span className="text-[10px] text-slate-700">•</span>
-                            <span className="text-[10px] text-blue-400/70">{n.actor_name}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {n.task && (
-                      <div className="p-1.5 rounded-md bg-white/5 text-slate-500 group-hover:text-blue-400 transition-colors">
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </div>
-                    )}
+
+              {/* List */}
+              <div className="max-h-[320px] overflow-y-auto custom-scrollbar">
+                {loading ? (
+                  <div className="py-8 flex flex-col items-center justify-center gap-2">
+                    <div className="w-4 h-4 border border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin"></div>
+                    <span className="text-[8px] text-white/20 uppercase tracking-tighter">Syncing_Nodes...</span>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-          
-          <div className="p-2 border-t border-[#2a3655] bg-white/2">
-            <button className="w-full py-2 text-xs text-slate-500 hover:text-slate-300 transition-colors">
-              Ver todo el historial
-            </button>
-          </div>
-        </div>
-      )}
+                ) : notifications.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center justify-center text-white/20">
+                     <Inbox className="w-6 h-6 mb-2 opacity-10" />
+                     <span className="text-[8px] uppercase tracking-widest font-mono">Zero_Alerts_Detected</span>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/5">
+                    {notifications.map((n) => (
+                      <div 
+                        key={n.id}
+                        className={`group px-4 py-3 transition-colors hover:bg-white/3 relative ${
+                          !n.is_read ? 'bg-cyan-500/2' : ''
+                        }`}
+                      >
+                        {!n.is_read && (
+                           <div className="absolute top-0 left-0 w-px h-full bg-cyan-500"></div>
+                        )}
+                        
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className={`text-[9px] font-bold uppercase tracking-tight ${
+                              !n.is_read ? 'text-white' : 'text-white/40'
+                            }`}>
+                              {n.title}
+                            </span>
+                            <span className="text-[7px] text-white/20 font-mono">
+                              {n.created_at ? new Date(n.created_at).toLocaleTimeString() : ''}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-white/60 leading-tight">
+                            {n.content}
+                          </p>
+                          
+                          <div className="mt-2 flex items-center gap-3">
+                            {n.link && (
+                              <Link 
+                                to={n.link}
+                                onClick={() => setIsOpen(false)}
+                                className="text-[8px] text-cyan-400 hover:underline uppercase font-bold tracking-widest"
+                              >
+                                View_Origin
+                              </Link>
+                            )}
+                            {!n.is_read && (
+                              <button 
+                                onClick={() => handleMarkRead(n.id)}
+                                className="text-[8px] text-white/20 hover:text-white uppercase font-bold"
+                              >
+                                Dissmiss
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* View All */}
+              <div className="px-4 py-2 border-t border-white/10 bg-white/1">
+                 <button className="w-full text-center text-[7px] text-white/20 hover:text-white uppercase tracking-[0.2em] font-mono transition-colors py-1">
+                    Load_Encrypted_Archives
+                 </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

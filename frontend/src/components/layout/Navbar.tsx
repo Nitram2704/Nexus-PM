@@ -1,8 +1,10 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { LogOut, ChevronRight, LayoutDashboard, Settings, ListTodo } from 'lucide-react'
+import { LogOut, Settings, Cpu } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
-import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { useChatStore } from '@/store/chatStore'
+import { useUIStore } from '@/store/uiStore'
+import { NotificationBell } from '../notifications/NotificationBell'
 
 export function Navbar() {
   const location = useLocation()
@@ -10,8 +12,9 @@ export function Navbar() {
   const navigate = useNavigate()
   const { logout } = useAuthStore()
 
-  // Read from global store — no extra API call
   const activeProject = useProjectStore((s) => s.activeProject)
+  const { isIntelligenceOpen, toggleIntelligence } = useUIStore()
+  const { pendingActionsCount } = useChatStore()
 
   const handleLogout = () => {
     logout()
@@ -21,84 +24,62 @@ export function Navbar() {
   const isProjectSection = !!projectId
   const isKanban = location.pathname.includes('/kanban')
   const isBacklog = location.pathname.includes('/backlog')
+  const isInsights = location.pathname.includes('/insights')
 
   return (
-    <nav className="h-14 bg-[#1a2235]/90 backdrop-blur-md border-b border-[#2a3655] flex items-center justify-between px-6 sticky top-0 z-50 shadow-sm">
-      {/* Left: branding & breadcrumbs */}
-      <div className="flex items-center gap-1.5 text-sm font-medium text-slate-400">
-        <Link
-          to="/dashboard"
-          className="flex items-center gap-2 hover:text-white transition-colors py-1.5 px-2 rounded-md hover:bg-white/5 group"
-        >
-          <svg width="20" height="20" viewBox="0 0 40 40" fill="none" className="group-hover:scale-105 transition-transform">
-            <rect width="40" height="40" rx="8" fill="#3b82f6" fillOpacity="0.2" />
-            <path d="M10 28L20 12L30 28" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="20" cy="20" r="3" fill="#3b82f6" />
-          </svg>
-          <span className="hidden sm:inline font-semibold text-slate-200">Nexus PM</span>
+    <nav className="h-12 bg-black/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-6 sticky top-0 z-50">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium data-label">
+        <Link to="/dashboard" className="flex items-center gap-3 hover:text-cyan-400 transition-colors py-1 group">
+          <div className="relative w-5 h-5 flex items-center justify-center border border-cyan-400/30 group-hover:border-cyan-400 transition-colors">
+             <div className="absolute top-0 left-0 w-1 h-1 bg-cyan-400"></div>
+             <div className="w-2 h-2 bg-cyan-400/20 group-hover:bg-cyan-400/40 transition-colors"></div>
+          </div>
+          <span className="hidden sm:inline font-bold tracking-widest text-white">NEXUS_PM // INIT</span>
         </Link>
 
         {isProjectSection && activeProject && (
           <>
-            <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
-            <Link
-              to={`/project/${activeProject.id}/kanban`}
-              className="hover:text-white transition-colors truncate max-w-[150px] sm:max-w-[200px]"
-              title={activeProject.name}
-            >
-              {activeProject.name}
+            <div className="w-2 h-px bg-white/20 mx-2" />
+            <Link to={`/project/${activeProject.id}/kanban`} className="hover:text-cyan-400 transition-colors truncate max-w-[150px] sm:max-w-[200px]" title={activeProject.name}>
+              SYS_{activeProject.name.toUpperCase()}
             </Link>
           </>
         )}
 
-        {isProjectSection && (isKanban || isBacklog) && (
+        {isProjectSection && (isKanban || isBacklog || isInsights) && (
           <>
-            <ChevronRight className="w-4 h-4 text-slate-600 shrink-0 mx-1" />
-            <div className="flex items-center p-1 gap-1 rounded-lg bg-slate-800/50 border border-slate-700/50">
-              <Link
-                to={`/project/${projectId}/kanban`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  isKanban
-                    ? 'bg-slate-700 text-blue-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Kanban
-              </Link>
-              <Link
-                to={`/project/${projectId}/backlog`}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  isBacklog
-                    ? 'bg-slate-700 text-blue-400 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                }`}
-              >
-                <ListTodo className="w-4 h-4" />
-                Planificación
-              </Link>
+            <div className="w-2 h-px bg-white/20 mx-2" />
+            <div className="flex items-center gap-1 border-l border-white/10 pl-3">
+              <Link to={`/project/${projectId}/kanban`} className={`px-3 py-1 border transition-all ${isKanban ? 'border-cyan-400 text-cyan-400 bg-cyan-400/5' : 'border-transparent text-white/40 hover:text-white'}`}>KANBAN</Link>
+              <Link to={`/project/${projectId}/backlog`} className={`px-3 py-1 border transition-all ${isBacklog ? 'border-cyan-400 text-cyan-400 bg-cyan-400/5' : 'border-transparent text-white/40 hover:text-white'}`}>PLAN_DATA</Link>
+              <Link to={`/project/${projectId}/insights`} className={`px-3 py-1 border transition-all ${isInsights ? 'border-cyan-400 text-cyan-400 bg-cyan-400/5' : 'border-transparent text-white/40 hover:text-white'}`}>INTEL_REPORT</Link>
             </div>
           </>
         )}
       </div>
 
-      {/* Right: user actions */}
-      <div className="flex items-center gap-2">
-        <NotificationBell />
+      <div className="flex items-center gap-4 text-[10px] data-label">
         <button
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors p-2 rounded-md hover:bg-white/5"
-          title="Ajustes"
+          onClick={() => toggleIntelligence()}
+          className={`px-3 py-1 border transition-all flex items-center gap-2 relative ${isIntelligenceOpen ? 'border-cyan-400 text-cyan-400 bg-cyan-400/10' : 'border-white/10 text-white/40 hover:text-white'}`}
         >
-          <Settings className="w-4 h-4" />
+          <Cpu className={`w-3 h-3 ${isIntelligenceOpen ? 'animate-pulse' : ''}`} />
+          <span>INTEL_HUB</span>
+          {pendingActionsCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping shadow-[0_0_5px_rgba(244,63,94,0.5)]"></span>
+          )}
         </button>
-        <div className="w-px h-5 bg-slate-700 mx-1" />
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 text-slate-400 hover:text-rose-400 transition-colors p-2 rounded-md hover:bg-white/5"
-          title="Cerrar sesión"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline text-sm font-medium">Salir</span>
+        
+        <NotificationBell />
+        
+        <button className="text-white/40 hover:text-white transition-colors flex items-center gap-2">
+          <Settings className="w-3 h-3" />
+          <span className="hidden lg:inline">CONFIG</span>
+        </button>
+        
+        <button onClick={handleLogout} className="text-white/40 hover:text-rose-400 transition-colors flex items-center gap-2 border border-white/5 hover:border-rose-400/30 px-3 py-1">
+          <LogOut className="w-3 h-3" />
+          <span className="hidden sm:inline">EXIT_SESSION</span>
         </button>
       </div>
     </nav>

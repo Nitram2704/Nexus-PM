@@ -174,3 +174,48 @@ class MeView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class UserDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.tasks.models import Task
+        from apps.projects.models import Project, Member
+        from django.db.models import Q
+        
+        user = request.user
+        
+        # 1. Assigned tasks (not done)
+        assigned_tasks = Task.objects.filter(
+            assignee=user,
+            column__is_done_column=False
+        ).select_related('project', 'column').order_by('-priority', '-updated_at')[:10]
+        
+        # 2. Recent projects (Owned or Member)
+        projects = Project.objects.filter(
+            Q(owner=user) | Q(members__user=user)
+        ).distinct().order_by('-updated_at')[:6]
+        
+        # 3. Stats
+        total_assigned = Task.objects.filter(assignee=user).count()
+        pending = Task.objects.filter(assignee=user, column__is_done_column=False).count()
+        
+        from .serializers import DashboardTaskSerializer
+        
+        return Response({
+            "tasks": DashboardTaskSerializer(assigned_tasks, many=True).data,
+            "projects": [
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "key": p.key,
+                    "role": "owner" if p.owner == user else "member"
+                } for p in projects
+            ],
+            "stats": {
+                "total_assigned": total_assigned,
+                "pending": pending,
+                "completed": total_assigned - pending
+            }
+        })

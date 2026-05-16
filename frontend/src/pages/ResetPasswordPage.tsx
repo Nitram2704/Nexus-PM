@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Loader2, Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Loader2, Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react'
 import { resetPasswordApi } from '@/api/auth'
 import toast from 'react-hot-toast'
 import type { AxiosError } from 'axios'

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles, MessageSquare } from 'lucide-react'
+import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles, Bot } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { Modal } from '@/components/Modal'
 import { getSprintsApi, createSprintApi, startSprintApi, completeSprintApi } from '@/api/sprints'
 import { getTasksApi, createTaskApi, updateTaskApi } from '@/api/tasks'
 import { AISuggestionModal } from '@/components/kanban/AISuggestionModal'
-import { AIPrioritizationModal } from '@/components/ai/AIPrioritizationModal'
-import { AIChatDrawer } from '@/components/ai/AIChatDrawer'
+import { AgentOrchestrationModal } from '@/components/kanban/AgentOrchestrationModal'
 import type { Project, Sprint, Task } from '@/types/project'
 import toast from 'react-hot-toast'
 import { useProjectStore } from '@/store/projectStore'
@@ -23,11 +22,10 @@ export function BacklogPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [expandedSprints, setExpandedSprints] = useState<Record<string, boolean>>({})
   
-  const [isSprintModalOpen, setIsSprintModalOpen] = useState(false)
+   const [isSprintModalOpen, setIsSprintModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
-  const [isPrioritizationModalOpen, setIsPrioritizationModalOpen] = useState(false)
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState(false)
   const [newTaskSprintId, setNewTaskSprintId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -103,8 +101,8 @@ export function BacklogPage() {
   if (isLoading) {
     return (
       <div className="backlog-loading">
-        <Loader2 className="btn-spinner" size={48} />
-        <p>Cargando planing...</p>
+        <Loader2 className="btn-spinner" size={24} style={{ color: 'rgba(34, 211, 238, 0.4)' }} />
+        <p>LOADING_PLAN_DATA...</p>
       </div>
     )
   }
@@ -113,7 +111,7 @@ export function BacklogPage() {
     <div className="backlog-wrapper">
       <header className="backlog-header">
         <div className="backlog-header-left">
-          <h1 className="backlog-project-title">{project?.name} / Backlog</h1>
+          <h1 className="backlog-project-title">{project?.name?.toUpperCase()} / BACKLOG</h1>
           <span className="backlog-project-key">{project?.key}</span>
         </div>
          <div className="backlog-header-actions">
@@ -124,20 +122,12 @@ export function BacklogPage() {
             <Sparkles size={16} /> Generar con IA
           </button>
           <button 
-            className="btn-secondary flex items-center gap-2 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10"
-            onClick={() => setIsPrioritizationModalOpen(true)}
+            className="btn-secondary flex items-center gap-2 border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+            onClick={() => setIsAgentModalOpen(true)}
           >
-            <Sparkles size={16} /> Priorizar con IA
+            <Sparkles size={16} /> Ops-Room
           </button>
-          <button 
-            className="btn-chat ml-2"
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            title="Chat con Nexus Agent"
-          >
-            <MessageSquare size={16} />
-            Chat
-          </button>
-          <button className="btn-primary ml-2" onClick={() => setIsSprintModalOpen(true)}>
+          <button className="btn-primary" onClick={() => setIsSprintModalOpen(true)}>
             <Plus size={16} /> Crear Sprint
           </button>
         </div>
@@ -221,55 +211,51 @@ export function BacklogPage() {
         onSuccess={loadData}
       />
 
-      <AIPrioritizationModal
-        isOpen={isPrioritizationModalOpen}
-        onClose={() => setIsPrioritizationModalOpen(false)}
+      <AgentOrchestrationModal
+        isOpen={isAgentModalOpen}
+        onClose={() => setIsAgentModalOpen(false)}
         projectId={projectId!}
-        onSuccess={loadData}
-      />
-
-      <AIChatDrawer 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
-        projectId={projectId || ''}
-        project={project}
-        onTaskCreated={loadData}
       />
 
       <style>{`
-        .backlog-wrapper { height: calc(100vh - 60px); display: flex; flex-direction: column; background: var(--color-bg); overflow-y: auto; }
-        .backlog-header { padding: 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--color-border); }
+        .backlog-wrapper { height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--color-bg); overflow-y: auto; }
+        .backlog-header { padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .backlog-header-left { display: flex; align-items: center; gap: 12px; }
-        .backlog-project-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--color-text-primary); }
-        .backlog-project-key { padding: 2px 8px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--color-text-secondary); }
-        .backlog-container { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 32px; }
-        .section-title { font-size: 1rem; font-weight: 600; color: var(--color-text-primary); }
-        .count-badge { font-size: 0.75rem; color: var(--color-text-muted); }
-        .task-list { background: var(--color-surface); border: 1px solid var(--color-border-subtle); border-radius: 8px; margin-top: 8px; min-height: 50px; }
-        .task-item { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--color-border-subtle); background: var(--color-surface); transition: background 0.2s; cursor: grab; }
+        .backlog-header-actions { display: flex; align-items: center; gap: 8px; }
+        .backlog-project-title { font-family: var(--font-mono); font-size: 0.8125rem; font-weight: 700; color: white; letter-spacing: 0.15em; text-transform: uppercase; }
+        .backlog-project-key { padding: 2px 6px; border: 1px solid rgba(255,255,255,0.08); font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: rgba(255,255,255,0.25); letter-spacing: 0.1em; }
+        .backlog-container { flex: 1; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 24px; }
+        .section-title { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.15em; }
+        .count-badge { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; }
+        .task-list { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); margin-top: 6px; min-height: 40px; }
+        .task-item { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); background: transparent; transition: all 0.15s; cursor: grab; border-left: 2px solid transparent; }
         .task-item:last-child { border-bottom: none; }
-        .task-item:hover { background: var(--color-surface-2); }
-        .empty-state { padding: 24px; text-align: center; color: var(--color-text-muted); font-size: 0.875rem; }
-        .sprint-container { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
-        .sprint-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; background: var(--color-surface-2); cursor: pointer; }
-        .sprint-info { display: flex; align-items: center; gap: 12px; }
-        .sprint-status-tag { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; }
-        .sprint-status-tag[data-status="active"] { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-        .sprint-status-tag[data-status="planning"] { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-        .backlog-loading { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--color-text-secondary); }
-        .task-type-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; border-radius: 2px; font-size: 10px; font-weight: 800; color: white; }
-        .icon-story { background: #6366f1; }
-        .icon-bug { background: #ef4444; }
-        .icon-task { background: #3b82f6; }
-        .btn-primary { background: var(--color-accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
-        .btn-ghost { background: transparent; border: none; color: var(--color-text-muted); display: flex; align-items: center; gap: 4px; font-size: 0.75rem; cursor: pointer; }
-        .btn-ghost:hover { color: var(--color-text-primary); }
-        .btn-secondary { background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-primary); padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+        .task-item:hover { background: rgba(255,255,255,0.02); border-left-color: rgba(34, 211, 238, 0.4); }
+        .empty-state { padding: 20px; text-align: center; font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.15); text-transform: uppercase; letter-spacing: 0.2em; }
+        .sprint-container { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); overflow: hidden; margin-bottom: 12px; position: relative; }
+        .sprint-container::before { content: ''; position: absolute; top: 0; left: 0; width: 6px; height: 1px; background: rgba(34, 211, 238, 0.4); }
+        .sprint-header { padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.02); cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .sprint-info { display: flex; align-items: center; gap: 10px; }
+        .sprint-status-tag { font-family: var(--font-mono); font-size: 8px; font-weight: 700; padding: 2px 6px; text-transform: uppercase; letter-spacing: 0.1em; }
+        .sprint-status-tag[data-status="active"] { background: rgba(16, 185, 129, 0.08); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .sprint-status-tag[data-status="planning"] { background: rgba(34, 211, 238, 0.08); color: rgba(34, 211, 238, 0.7); border: 1px solid rgba(34, 211, 238, 0.15); }
+        .backlog-loading { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+        .backlog-loading p { font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.2); text-transform: uppercase; letter-spacing: 0.3em; }
+        .task-type-icon { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; color: white; }
+        .icon-story { background: rgba(99, 102, 241, 0.8); }
+        .icon-bug { background: rgba(239, 68, 68, 0.8); }
+        .icon-task { background: rgba(34, 211, 238, 0.6); }
+        .btn-primary { background: rgba(34, 211, 238, 0.1); color: #22d3ee; border: 1px solid rgba(34, 211, 238, 0.3); padding: 5px 12px; display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .btn-primary:hover { background: rgba(34, 211, 238, 0.15); }
+        .btn-ghost { background: transparent; border: none; color: rgba(255,255,255,0.2); display: flex; align-items: center; gap: 4px; font-family: var(--font-mono); font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+        .btn-ghost:hover { color: rgba(34, 211, 238, 0.6); }
+        .btn-secondary { background: transparent; border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); padding: 4px 10px; font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+        .btn-secondary:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); }
         
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 0.875rem; color: var(--color-text-muted); margin-bottom: 6px; }
-        .form-control { width: 100%; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 8px; padding: 10px; color: var(--color-text-primary); outline: none; transition: border-color 0.2s; }
-        .form-control:focus { border-color: var(--color-accent); }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-family: var(--font-mono); font-size: 9px; color: rgba(255,255,255,0.3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.15em; }
+        .form-control { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 10px; color: rgba(255,255,255,0.7); outline: none; font-family: var(--font-mono); font-size: 11px; transition: border-color 0.15s; }
+        .form-control:focus { border-color: rgba(34, 211, 238, 0.4); }
       `}</style>
     </div>
   )
@@ -361,8 +347,12 @@ function TaskItem({ task, index }: { task: Task, index: number }) {
           <span className="text-muted text-xs font-mono w-16">{task.key}</span>
           <span className="flex-1 text-sm truncate">{task.title}</span>
           {task.story_points && <span className="count-badge bg-surface-2 px-2 rounded-full">{task.story_points}</span>}
-          <div className="assignee-avatar" style={{ opacity: task.assignee ? 1 : 0.3 }}>
-            <User size={12} />
+          <div className="assignee-avatar" style={{ opacity: (task.assignee || task.ai_assignee) ? 1 : 0.3 }} title={task.ai_assignee || 'Unassigned'}>
+            {task.ai_assignee ? (
+              <Bot size={12} className={task.ai_assignee === 'product_manager' ? 'text-purple-400' : task.ai_assignee === 'backend_architect' ? 'text-blue-400' : 'text-cyan-400'} />
+            ) : (
+              <User size={12} />
+            )}
           </div>
         </div>
       )}

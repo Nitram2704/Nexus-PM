@@ -1,5 +1,25 @@
 from rest_framework import serializers
-from .models import AIProposal
+
+from .models import AIProposal, AIMessage, ProposedAction, AIRecommendation
+
+class AIRecommendationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIRecommendation
+        fields = ['id', 'title', 'description', 'type', 'status', 'created_at']
+
+class ProposedActionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProposedAction
+        fields = ['id', 'action_type', 'params', 'status', 'created_at']
+
+class AIMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIMessage
+        fields = ['id', 'role', 'content', 'action_metadata', 'created_at']
+
+class ChatInputSerializer(serializers.Serializer):
+    content = serializers.CharField()
+
 
 class GenerateBacklogSerializer(serializers.Serializer):
     description = serializers.CharField(min_length=10, max_length=1000)
@@ -15,8 +35,4 @@ class AIProposalSerializer(serializers.ModelSerializer):
         model = AIProposal
         fields = ['id', 'description', 'data', 'created_at', 'is_imported']
 
-class RecommendationSerializer(serializers.ModelSerializer):
-    class Meta:
-        from .models import Recommendation
-        model = Recommendation
-        fields = ['id', 'title', 'description', 'type', 'status', 'created_at']
+

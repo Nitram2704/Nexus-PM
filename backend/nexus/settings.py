@@ -60,10 +60,21 @@ WSGI_APPLICATION = "nexus.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": config("DB_ENGINE", default="django.db.backends.sqlite3"),
-        "NAME": BASE_DIR / config("DB_NAME", default="db.sqlite3"),
+        "ENGINE": config("DB_ENGINE", default="django.db.backends.postgresql"),
+        "NAME": config("DB_NAME", default="postgres"),
+        "USER": config("DB_USER", default=""),
+        "PASSWORD": config("DB_PASSWORD", default=""),
+        "HOST": config("DB_HOST", default=""),
+        "PORT": config("DB_PORT", default=""),
     }
 }
+
+# If HOST is not provided, fallback to SQLite for local development
+if not DATABASES["default"]["HOST"]:
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / config("DB_NAME", default="db.sqlite3"),
+    }
 
 AUTH_USER_MODEL = "accounts.User"
 

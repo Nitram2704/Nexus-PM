@@ -1,16 +1,13 @@
 from django.db import models
 from django.conf import settings
-from ..projects.models import Project
+from apps.projects.models import Project
 import uuid
 
 class AIGenerationLog(models.Model):
-    """
-    Registra las peticiones a la IA para auditoría y control de costos.
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='ai_logs')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    prompt_type = models.CharField(max_length=50) # 'backlog_gen', 'story_refine', etc.
+    prompt_type = models.CharField(max_length=50)
     input_text = models.TextField()
     output_text = models.TextField(blank=True, null=True)
     tokens_used = models.PositiveIntegerField(default=0)
@@ -20,46 +17,75 @@ class AIGenerationLog(models.Model):
         ordering = ['-created_at']
 
 class AIProposal(models.Model):
-    """
-    Almacena una propuesta de la IA (un conjunto de tareas sugeridas) 
-    para que el usuario las revise y elija cuáles importar.
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='ai_proposals')
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    description = models.TextField(help_text="Descripción que originó la propuesta")
-    data = models.JSONField(help_text="Lista de tareas sugeridas en formato JSON")
+    description = models.TextField()
+    data = models.JSONField()
     is_imported = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Propuesta para {self.project.name} - {self.created_at.date()}"
+class AIConversation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='ai_conversations', null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
-class Recommendation(models.Model):
-    """
-    Almacena una recomendación generada por el agente de IA.
-    """
-    TYPE_CHOICES = [
-        ('risk', 'Riesgo'),
-        ('improvement', 'Mejora'),
-        ('technical', 'Sugerencia Técnica'),
-    ]
+    class Meta:
+        ordering = ['-updated_at']
+
+class AIMessage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    conversation = models.ForeignKey(AIConversation, on_delete=models.CASCADE, related_name='messages')
+    role = models.CharField(max_length=20, choices=[('user', 'User'), ('assistant', 'Assistant')])
+    content = models.TextField()
+    action_metadata = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+class ProposedAction(models.Model):
     STATUS_CHOICES = [
-        ('pending', 'Pendiente'),
-        ('applied', 'Aplicada'),
-        ('discarded', 'Descartada'),
+        ('PENDING', 'Pending'),
+        ('EXECUTED', 'Executed'),
+        ('REJECTED', 'Rejected'),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='recommendations')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='proposed_actions', null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    message = models.ForeignKey(AIMessage, on_delete=models.CASCADE, related_name='proposed_actions', null=True, blank=True)
+    action_type = models.CharField(max_length=50)
+    params = models.JSONField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+class AIRecommendation(models.Model):
+    TYPE_CHOICES = [
+        ('risk', 'Risk'),
+        ('improvement', 'Improvement'),
+        ('technical', 'Technical'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('applied', 'Applied'),
+        ('discarded', 'Discarded'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='ai_recommendations')
     title = models.CharField(max_length=200)
     description = models.TextField()
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.get_type_display()} - {self.title}"

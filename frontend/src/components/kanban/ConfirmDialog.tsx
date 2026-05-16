@@ -83,41 +83,47 @@ export function ConfirmDialog({
         .text-secondary { color: var(--color-text-secondary); }
         .btn-modal-cancel {
           flex: 1;
-          padding: 10px;
-          border-radius: 8px;
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid var(--color-border);
+          padding: 8px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255,255,255,0.08);
           color: var(--color-text-primary);
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
           font-weight: 500;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
         }
         .btn-modal-cancel:hover:not(:disabled) {
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255,255,255,0.15);
         }
         .btn-modal-confirm {
           flex: 1;
-          padding: 10px;
-          border-radius: 8px;
-          border: none;
+          padding: 8px;
+          border: 1px solid;
           color: white;
-          font-weight: 600;
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
+          font-weight: 700;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s;
           display: flex;
           align-items: center;
           justify-content: center;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
         }
-        .btn-danger { background: #ef4444; }
-        .btn-danger:hover:not(:disabled) { background: #dc2626; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
-        .btn-warning { background: #f59e0b; }
-        .btn-warning:hover:not(:disabled) { background: #d97706; box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+        .btn-danger { background: rgba(244, 63, 94, 0.15); border-color: rgba(244, 63, 94, 0.3); color: #fb7185; }
+        .btn-danger:hover:not(:disabled) { background: rgba(244, 63, 94, 0.25); border-color: rgba(244, 63, 94, 0.5); }
+        .btn-warning { background: rgba(251, 191, 36, 0.15); border-color: rgba(251, 191, 36, 0.3); color: #fbbf24; }
+        .btn-warning:hover:not(:disabled) { background: rgba(251, 191, 36, 0.25); border-color: rgba(251, 191, 36, 0.5); }
         .btn-spinner-sm {
-          width: 16px;
-          height: 16px;
-          border: 2px solid rgba(255,255,255,0.3);
-          border-top-color: white;
-          border-radius: 50%;
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255,255,255,0.2);
+          border-top-color: currentColor;
           animation: spin 0.8s linear infinite;
         }
         @keyframes spin {

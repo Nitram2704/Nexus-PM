@@ -118,9 +118,8 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
         .btn-spinner-xs {
           width: 14px;
           height: 14px;
-          border: 2px solid rgba(255,255,255,0.2);
-          border-top-color: var(--color-accent);
-          border-radius: 50%;
+          border: 2px solid rgba(255,255,255,0.1);
+          border-top-color: var(--color-primary);
           animation: spin 0.8s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -130,19 +129,17 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
           top: 100%;
           right: 0;
           width: 200px;
-          background: rgba(30, 41, 59, 0.85);
+          background: rgba(15, 23, 42, 0.95);
           backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           z-index: 100;
-          margin-top: 8px;
+          margin-top: 6px;
           overflow: hidden;
-          animation: dropdownSlide 0.2s ease-out;
+          animation: dropdownSlide 0.15s ease-out;
         }
 
         @keyframes dropdownSlide {
-          from { opacity: 0; transform: translateY(-10px); }
+          from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
@@ -150,46 +147,49 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
           width: 100%;
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 10px 16px;
-          font-size: 0.8125rem;
+          gap: 8px;
+          padding: 8px 14px;
+          font-family: var(--font-mono);
+          font-size: 0.6875rem;
           color: var(--color-text-secondary);
           background: none;
           border: none;
           cursor: pointer;
           text-align: left;
-          transition: all 0.15s;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          transition: all 0.1s;
         }
 
         .dropdown-item:hover:not(:disabled) {
-          background: rgba(59, 130, 246, 0.15);
-          color: var(--color-text-primary);
+          background: rgba(34, 211, 238, 0.08);
+          color: var(--color-primary);
         }
 
         .dropdown-item:disabled {
-          opacity: 0.4;
+          opacity: 0.3;
           cursor: not-allowed;
         }
 
         .dropdown-item--danger:hover {
-          background: rgba(239, 68, 68, 0.15) !important;
-          color: #fca5a5 !important;
+          background: rgba(244, 63, 94, 0.1) !important;
+          color: #fb7185 !important;
         }
 
         .dropdown-divider {
           height: 1px;
-          background: rgba(255, 255, 255, 0.05);
-          margin: 4px 0;
+          background: rgba(255, 255, 255, 0.04);
+          margin: 2px 0;
         }
 
         .rename-input {
           width: 100%;
-          background: rgba(15, 23, 42, 0.5);
-          border: 1px solid var(--color-accent);
-          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(34, 211, 238, 0.3);
           padding: 6px 10px;
           color: white;
-          font-size: 0.8125rem;
+          font-family: var(--font-mono);
+          font-size: 0.75rem;
           outline: none;
         }
 
@@ -203,12 +203,10 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
           right: 100%;
           top: 0;
           width: 160px;
-          background: rgba(30, 41, 59, 0.95);
+          background: rgba(15, 23, 42, 0.95);
           backdrop-filter: blur(8px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 8px;
-          margin-right: 4px;
-          box-shadow: -5px 5px 15px rgba(0,0,0,0.3);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          margin-right: 2px;
         }
 
         .dropdown-submenu:hover .submenu-content {
@@ -216,8 +214,8 @@ export function ColumnMenu({ column, otherColumns, onRename, onClear, onMoveAll,
         }
 
         .dropdown-item--sub {
-          padding: 8px 12px;
-          font-size: 0.75rem;
+          padding: 6px 12px;
+          font-size: 0.625rem;
         }
       `}</style>
     </div>

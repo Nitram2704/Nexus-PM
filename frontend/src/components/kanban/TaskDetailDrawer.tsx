@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, User, MessageSquare, Send, ChevronDown, Trash2, Calendar, AlertCircle } from 'lucide-react'
+import { X, User, MessageSquare, Send, ChevronDown } from 'lucide-react'
 import { getTaskCommentsApi, addCommentApi, updateTaskApi } from '@/api/tasks'
 import type { Task, Comment, Member } from '@/types/project'
 import toast from 'react-hot-toast'
@@ -231,12 +231,12 @@ export function TaskDetailDrawer({ task, members, onClose, onUpdate }: TaskDetai
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(4px);
+          background: rgba(2, 6, 23, 0.6);
+          backdrop-filter: blur(6px);
           z-index: 100;
           opacity: 0;
           pointer-events: none;
-          transition: opacity 0.3s ease;
+          transition: opacity 0.25s ease;
         }
         .drawer-overlay.active {
           opacity: 1;
@@ -249,77 +249,77 @@ export function TaskDetailDrawer({ task, members, onClose, onUpdate }: TaskDetai
           width: 500px;
           height: 100vh;
           background: var(--color-surface);
-          border-left: 1px solid var(--color-border);
-          box-shadow: -10px 0 30px rgba(0, 0, 0, 0.2);
+          border-left: 1px solid rgba(255,255,255,0.08);
           z-index: 101;
           display: flex;
           flex-direction: column;
-          transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .task-drawer.active {
           right: 0;
         }
         .drawer-header {
-          padding: 24px;
+          padding: 18px 20px;
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          border-bottom: 1px solid var(--color-border);
+          border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .task-key {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--color-text-muted);
+          font-family: var(--font-mono);
+          font-size: 0.625rem;
+          font-weight: 700;
+          color: var(--color-primary);
           text-transform: uppercase;
+          letter-spacing: 0.1em;
           margin-bottom: 4px;
           display: block;
         }
         .task-title {
-          font-size: 1.25rem;
+          font-size: 1rem;
           font-weight: 600;
           color: var(--color-text-primary);
         }
         .close-btn {
           background: none;
-          border: none;
+          border: 1px solid transparent;
           color: var(--color-text-secondary);
           cursor: pointer;
           padding: 4px;
-          border-radius: 6px;
-          transition: background 0.2s;
+          transition: all 0.15s;
         }
-        .close-btn:hover { background: var(--color-surface-2); color: var(--color-text-primary); }
-        .drawer-content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 32px; }
-        .drawer-section { display: flex; flex-direction: column; gap: 8px; }
-        .section-label { font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px; }
-        .description-view { padding: 12px; border-radius: 8px; cursor: pointer; transition: background 0.2s; color: var(--color-text-primary); line-height: 1.6; }
-        .description-view:hover { background: var(--color-surface-2); }
-        .edit-description-wrapper { display: flex; flex-direction: column; gap: 12px; }
-        .description-textarea { width: 100%; min-height: 120px; background: var(--color-surface-2); border: 1px solid var(--color-accent); border-radius: 8px; padding: 12px; color: var(--color-text-primary); font-family: inherit; font-size: 0.9375rem; resize: vertical; outline: none; }
+        .close-btn:hover { border-color: rgba(255,255,255,0.08); color: var(--color-text-primary); }
+        .drawer-content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 24px; }
+        .drawer-section { display: flex; flex-direction: column; gap: 6px; }
+        .section-label { font-family: var(--font-mono); font-size: 0.625rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.15em; display: flex; align-items: center; gap: 6px; }
+        .description-view { padding: 10px; border: 1px solid transparent; cursor: pointer; transition: all 0.15s; color: var(--color-text-primary); line-height: 1.6; font-size: 0.875rem; }
+        .description-view:hover { border-color: rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); }
+        .edit-description-wrapper { display: flex; flex-direction: column; gap: 10px; }
+        .description-textarea { width: 100%; min-height: 100px; background: rgba(255,255,255,0.02); border: 1px solid rgba(34,211,238,0.3); padding: 10px; color: var(--color-text-primary); font-family: var(--font-mono); font-size: 0.8125rem; resize: vertical; outline: none; }
         .edit-actions { display: flex; gap: 8px; }
-        .btn-sm { padding: 4px 12px; font-size: 0.8125rem; }
-        .btn-ghost { background: none; border: none; color: var(--color-text-secondary); cursor: pointer; font-weight: 500; }
-        .btn-ghost:hover { color: var(--color-text-primary); }
-        .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .btn-sm { padding: 3px 10px; font-size: 0.6875rem; }
+        .btn-ghost { background: none; border: 1px solid transparent; color: var(--color-text-secondary); cursor: pointer; font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; }
+        .btn-ghost:hover { color: var(--color-text-primary); border-color: rgba(255,255,255,0.06); }
+        .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .select-wrapper { position: relative; }
-        .drawer-select { width: 100%; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 8px; padding: 10px 32px 10px 12px; color: var(--color-text-primary); font-size: 0.875rem; appearance: none; cursor: pointer; outline: none; transition: all 0.2s; }
-        .drawer-select:hover { border-color: var(--color-accent); }
-        .select-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
-        .comments-list { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-        .comment-item { display: flex; gap: 12px; }
-        .comment-avatar { width: 28px; height: 28px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); flex-shrink: 0; }
+        .drawer-select { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 8px 28px 8px 10px; color: var(--color-text-primary); font-family: var(--font-mono); font-size: 0.75rem; appearance: none; cursor: pointer; outline: none; transition: all 0.15s; }
+        .drawer-select:hover { border-color: rgba(34,211,238,0.3); }
+        .select-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+        .comments-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+        .comment-item { display: flex; gap: 10px; }
+        .comment-avatar { width: 24px; height: 24px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); flex-shrink: 0; }
         .comment-body { flex: 1; }
-        .comment-header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 4px; }
-        .comment-author { font-size: 0.8125rem; font-weight: 600; color: var(--color-text-primary); }
-        .comment-date { font-size: 0.75rem; color: var(--color-text-muted); }
-        .comment-text { font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.4; }
-        .no-comments { font-size: 0.875rem; color: var(--color-text-muted); text-align: center; padding: 20px 0; }
-        .comment-input-wrapper { position: relative; display: flex; gap: 8px; }
-        .comment-input { flex: 1; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: 20px; padding: 10px 48px 10px 16px; color: var(--color-text-primary); font-size: 0.875rem; outline: none; transition: all 0.2s; }
-        .comment-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-        .send-btn { position: absolute; right: 4px; top: 4px; bottom: 4px; width: 32px; background: var(--color-accent); color: white; border: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
-        .send-btn:disabled { background: var(--color-border); cursor: not-allowed; }
-        .send-btn:not(:disabled):hover { transform: scale(1.05); }
+        .comment-header { display: flex; gap: 8px; align-items: baseline; margin-bottom: 3px; }
+        .comment-author { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 600; color: var(--color-text-primary); }
+        .comment-date { font-family: var(--font-mono); font-size: 0.625rem; color: var(--color-text-muted); }
+        .comment-text { font-size: 0.8125rem; color: var(--color-text-secondary); line-height: 1.4; }
+        .no-comments { font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-text-muted); text-align: center; padding: 16px 0; text-transform: uppercase; letter-spacing: 0.1em; }
+        .comment-input-wrapper { position: relative; display: flex; gap: 6px; }
+        .comment-input { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 8px 40px 8px 12px; color: var(--color-text-primary); font-family: var(--font-mono); font-size: 0.8125rem; outline: none; transition: all 0.15s; }
+        .comment-input:focus { border-color: rgba(34,211,238,0.3); }
+        .send-btn { position: absolute; right: 2px; top: 2px; bottom: 2px; width: 32px; background: rgba(34,211,238,0.15); color: var(--color-primary); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; }
+        .send-btn:disabled { background: rgba(255,255,255,0.03); color: var(--color-text-muted); cursor: not-allowed; }
+        .send-btn:not(:disabled):hover { background: rgba(34,211,238,0.25); }
       `}</style>
     </>
   )
