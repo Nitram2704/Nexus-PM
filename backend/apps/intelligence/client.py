@@ -2,50 +2,62 @@ import os
 import json
 import google.generativeai as genai
 from django.conf import settings
+from .expertise import get_system_prompt
 
 class BacklogAIClient:
-    def __init__(self):
+    def __init__(self, roles=None):
         # Configurar la API key desde settings
         genai.configure(api_key=settings.GOOGLE_API_KEY)
         # Usar un modo mock si no hay API key para desarrollo local
         self.is_mock = not settings.GOOGLE_API_KEY or settings.GOOGLE_API_KEY == 'your-api-key-here'
         
+        # Cargar instrucciones de sistema basadas en roles
+        self.system_instruction = get_system_prompt(roles)
+        
         self.model = genai.GenerativeModel(
-            model_name='gemma-4-26b-a4b-it', # Usando el nuevo modelo Gemma 4
+            model_name='gemma-4-26b-a4b-it',
             generation_config={
                 "temperature": 0.4,
                 "top_p": 0.95,
                 "top_k": 40,
-                "max_output_tokens": 2048,
-            }
+                "max_output_tokens": 4096, # Aumentado para propuestas más largas
+            },
+            system_instruction=self.system_instruction # Pasar las habilidades como instrucción de sistema
         )
 
     def generate_backlog_from_description(self, description):
         """
-        Genera una lista de épicas y tareas basadas en una descripción del proyecto.
+        Genera una lista de épicas y tareas con análisis estratégico (Riesgos y KPIs).
         """
         if self.is_mock:
             return [
                 {
                     "epic": "Gestión de Usuarios",
+                    "analysis": {"risks": ["Seguridad de datos"], "kpis": ["Conversión de registro"]},
                     "items": [
                         {"title": "Login de usuarios", "description": "Permitir acceso con email y password", "type": "feature", "priority": "high"},
-                        {"title": "Registro de usuarios", "description": "Formulario de registro", "type": "feature", "priority": "high"}
                     ]
                 }
             ]
 
         prompt = f"""
-        Actúa como un Senior Product Manager. Basado en la siguiente descripción de proyecto, 
-        genera una estructura inicial de backlog organizada por épicas.
+        Como experto en Estrategia de Producto, analiza esta descripción y genera un backlog de alto impacto.
         
         DESCRIPCIÓN:
         {description}
+        
+        REQUISITOS ADICIONALES:
+        1. Por cada épica, identifica al menos 2 Riesgos y 2 KPIs de éxito.
+        2. Asegura que las tareas sean 'SMART'.
         
         Formato JSON esperado: 
         [
           {{ 
             "epic": "Nombre de la épica", 
+            "analysis": {{
+                "risks": ["riesgo 1", "riesgo 2"],
+                "kpis": ["kpi 1", "kpi 2"]
+            }},
             "items": [
               {{ "title": "Título corto", "description": "Descripción breve", "type": "feature", "priority": "high|medium|low" }}
             ]
@@ -57,7 +69,6 @@ class BacklogAIClient:
         
         try:
             response = self.model.generate_content(prompt)
-            # Limpiar posibles bloques de código markdown
             text = response.text.replace('```json', '').replace('```', '').strip()
             return json.loads(text)
         except Exception as e:
@@ -111,20 +122,20 @@ class BacklogAIClient:
 
     def chat_with_project(self, history, message, context):
         """
-        Mantiene una conversación con contexto del proyecto.
+        Mantiene una conversación con contexto del proyecto aplicando expertise de PM/PO.
         """
         if self.is_mock:
             return "Este es un mensaje de prueba del asistente Nexus AI."
 
         prompt = f"""
-        Eres Nexus Agent, un asistente virtual integrado en una herramienta de gestión de proyectos.
-        Tienes acceso al contexto del proyecto actual. Ayuda al usuario con sus dudas, sugiere mejoras 
-        o ayuda a definir tareas.
+        Actúa como Nexus Strategic Advisor. No solo respondas preguntas, sino que ayuda activamente 
+        a mejorar el proyecto usando tus habilidades de PM, PO y Arquitecto.
         
-        CONTEXTO:
+        CONTEXTO DEL PROYECTO ACTUAL:
         {context}
         
-        REGLA ESPECIAL: Si sugieres crear una nueva tarea, incluye al final de tu mensaje este tag: 
+        REGLA DE ACCIÓN: Si detectas una oportunidad de mejora, un riesgo no mitigado o una tarea necesaria, 
+        sugiere su creación usando el formato:
         [SUGGESTION: {{"title": "Título", "description": "Descripción", "type": "task", "priority": "medium"}}]
         
         MENSAJE DEL USUARIO:
