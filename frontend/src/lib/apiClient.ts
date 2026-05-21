@@ -9,7 +9,13 @@ const apiClient = axios.create({
 // ── Request interceptor: attach access token ──────────────────────────────────
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken
-  if (token) {
+  const isPublicUrl = config.url && (
+    config.url.includes('/auth/login/') ||
+    config.url.includes('/auth/register/') ||
+    config.url.includes('/auth/password-reset/') ||
+    config.url.includes('/auth/refresh/')
+  )
+  if (token && !isPublicUrl) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config

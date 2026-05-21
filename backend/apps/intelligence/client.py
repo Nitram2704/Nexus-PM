@@ -125,6 +125,10 @@ class BacklogAIClient:
             print(f"Error en user stories v2: {e}")
             return self._get_mock_stories(requirement)
 
+    def chat(self, message, context, history=None):
+        """Wrapper method to align with views.py chat invocation signature."""
+        return self.chat_with_project(history or [], message, context)
+
     def chat_with_project(self, history, message, context):
         """Mantiene una conversación con contexto del proyecto aplicando expertise de PM/PO."""
         if self.is_mock:
