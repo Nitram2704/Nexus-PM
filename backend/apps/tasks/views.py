@@ -172,10 +172,23 @@ class TaskViewSet(viewsets.ModelViewSet):
         column = serializer.validated_data.get('column')
         if not column:
             column = project.columns.first()
-        
+
+        # Auto-generate task key (e.g. NEX-1, NEX-2) based on existing max
+        prefix = project.key
+        existing = Task.objects.filter(project=project).order_by('-created_at').values_list('key', flat=True).first()
+        if existing and existing.startswith(f"{prefix}-"):
+            try:
+                next_num = int(existing.split('-', 1)[1]) + 1
+            except (ValueError, IndexError):
+                next_num = 1
+        else:
+            next_num = 1
+        task_key = f"{prefix}-{next_num}"
+
         serializer.save(
             creator=self.request.user,
-            column=column
+            column=column,
+            key=task_key
         )
 
     @action(detail=True, methods=['post'], serializer_class=TaskMoveSerializer)

@@ -114,13 +114,6 @@ class Task(models.Model):
 
     order = models.PositiveIntegerField(default=0)
 
-    def save(self, *args, **kwargs):
-        if self.column and self.column.is_done_column and not self.completed_at:
-            self.completed_at = timezone.now()
-        elif self.column and not self.column.is_done_column:
-            self.completed_at = None
-        super().save(*args, **kwargs)
-
     class Meta:
         ordering = ['order', '-created_at']
 
@@ -128,15 +121,26 @@ class Task(models.Model):
         return f"[{self.key}] {self.title}"
 
     def save(self, *args, **kwargs):
-        # Si la columna es "Done" y no tenía fecha de completado, ponerla ahora
+        # Auto-generate key if not set (e.g. NEX-1, NEX-2)
+        if not self.key and self.project:
+            prefix = self.project.key
+            existing = Task.objects.filter(project=self.project).order_by('-created_at').values_list('key', flat=True).first()
+            if existing and existing.startswith(f"{prefix}-"):
+                try:
+                    next_num = int(existing.split('-', 1)[1]) + 1
+                except (ValueError, IndexError):
+                    next_num = 1
+            else:
+                next_num = 1
+            self.key = f"{prefix}-{next_num}"
+
+        # Set completed_at if moved to done column
         if self.column and self.column.is_done_column:
             if not self.completed_at:
-                from django.utils import timezone
                 self.completed_at = timezone.now()
         else:
-            # Si se mueve fuera de "Done", limpiar la fecha
             self.completed_at = None
-            
+
         super().save(*args, **kwargs)
 
 class Comment(models.Model):

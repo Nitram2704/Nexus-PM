@@ -4,6 +4,7 @@ djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.4.0
 python-decouple==3.8
 django-filter>=24.0
-psycopg2-binary==2.9.9
+google-genai>=1.0.0
+# psycopg2-binary==2.9.9  # solo necesario si usas PostgreSQL (omite DB_HOST para usar SQLite)
 # Pillow will be added once Python 3.14 binaries are available
 # pip install Pillow when using Python <= 3.13

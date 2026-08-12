@@ -30,7 +30,7 @@ EXEC_ACTION:
 
 class BacklogAIClient:
     """
-    Cliente para interactuar con la IA (Gemma 4) y gestionar el flujo de trabajo de Nexus-PM.
+    Cliente para interactuar con la IA (Gemini 2.5 Flash) y gestionar el flujo de trabajo de Nexus-PM.
     Usa la nueva SDK google.genai v2.
     """
     
@@ -41,7 +41,7 @@ class BacklogAIClient:
         else:
             try:
                 self.client = genai.Client(api_key=self.api_key)
-                self.model_name = 'gemma-4-26b-a4b-it'
+                self.model_name = 'gemini-2.5-flash'
                 self.is_mock = False
             except Exception as e:
                 print(f"Error configurando Gemini v2: {e}")

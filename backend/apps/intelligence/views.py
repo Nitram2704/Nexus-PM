@@ -488,7 +488,7 @@ class AIRecommendationView(views.APIView):
         
         # Otherwise, generate new recommendations
         client = BacklogAIClient()
-        tasks = project.tasks.all().values('title', 'description', 'status', 'priority')
+        tasks = project.tasks.all().values('title', 'description', 'column__name', 'priority')
         
         # Build context for analysis
         context = f"Project: {project.name}\nDescription: {project.description}\nTasks: {list(tasks)}"

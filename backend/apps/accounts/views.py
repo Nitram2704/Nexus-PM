@@ -175,6 +175,17 @@ class MeView(APIView):
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
+    def patch(self, request):
+        """
+        Actualiza el perfil del usuario autenticado (AUTH-04).
+        Solo first_name, last_name, bio y avatar son modificables;
+        email y username son read_only en UserSerializer.
+        """
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class UserDashboardView(APIView):
     permission_classes = [IsAuthenticated]

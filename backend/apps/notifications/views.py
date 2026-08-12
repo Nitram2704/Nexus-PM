@@ -1,7 +1,7 @@
 from rest_framework import views, response, status
 from rest_framework.permissions import IsAuthenticated
-from .models import Notification
-from .serializers import NotificationSerializer
+from .models import Notification, NotificationSetting
+from .serializers import NotificationSerializer, NotificationSettingSerializer
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 import time
@@ -56,3 +56,20 @@ class NotificationStreamView(views.APIView):
         resp['Cache-Control'] = 'no-cache'
         resp['X-Accel-Buffering'] = 'no'
         return resp
+
+class NotificationSettingsView(views.APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        settings, _ = NotificationSetting.objects.get_or_create(user=request.user)
+        serializer = NotificationSettingSerializer(settings)
+        return response.Response(serializer.data)
+
+    def put(self, request):
+        settings, _ = NotificationSetting.objects.get_or_create(user=request.user)
+        serializer = NotificationSettingSerializer(settings, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return response.Response(serializer.data)
+        return response.Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

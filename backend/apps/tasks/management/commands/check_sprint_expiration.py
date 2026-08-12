@@ -56,7 +56,8 @@ class Command(BaseCommand):
                         user=member.user,
                         type='expiration',
                         title=title,
-                        message=message,
-                        actor=sprint.project.owner # El dueño del proyecto como actor
+                        content=message,
+                        link=f'/project/{sprint.project.id}/kanban'
                     )
                     self.stdout.write(self.style.SUCCESS(f"Notificación enviada a {member.user.email} para el sprint {sprint.name}"))
+

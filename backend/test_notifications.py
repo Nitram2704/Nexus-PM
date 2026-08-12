@@ -40,13 +40,14 @@ def test_notification():
     )
     
     # 5. Check if notification was created
-    notif = Notification.objects.filter(user=user2, task=task).first()
+    notif = Notification.objects.filter(user=user2, type='task_assigned').first()
     if notif:
         print(f"ÉXITO: Notificación creada para {user2.email}")
         print(f"Título: {notif.title}")
-        print(f"Mensaje: {notif.message}")
+        print(f"Contenido: {notif.content}")
     else:
         print("ERROR: No se creó la notificación")
+
 
 if __name__ == "__main__":
     test_notification()

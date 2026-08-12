@@ -1,9 +1,13 @@
+import csv
+import io
+
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Sum
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from django.utils import timezone
 from datetime import timedelta
 
@@ -53,9 +57,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         )
 
     def get_permissions(self):
-        if self.action in ['update', 'partial_update', 'destroy', 'invite']:
+        if self.action in ['update', 'partial_update', 'destroy', 'invite', 'update_member_role', 'remove_member']:
             return [IsAuthenticated(), IsProjectOwnerOrAdmin()]
-        if self.action in ['retrieve', 'analytics']:
+        if self.action in ['retrieve', 'analytics', 'export_csv']:
             return [IsAuthenticated(), IsProjectMember()]
         return super().get_permissions()
 
@@ -212,6 +216,106 @@ class ProjectViewSet(viewsets.ModelViewSet):
             })
             
         return Response(data)
+
+    @action(detail=True, methods=['get'])
+    def export_csv(self, request, pk=None):
+        """
+        Exporta el backlog del proyecto como CSV (RPT-03).
+        Solo accesible para miembros del proyecto.
+        """
+        project = self.get_object()
+        from apps.tasks.models import Task
+
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(['key', 'title', 'type', 'priority', 'status', 'assignee', 'story_points', 'sprint'])
+
+        tasks = Task.objects.filter(project=project).select_related('column', 'assignee', 'sprint')
+        for task in tasks:
+            writer.writerow([
+                task.key,
+                task.title,
+                task.type,
+                task.priority,
+                task.column.name if task.column else '',
+                task.assignee.email if task.assignee else 'Sin asignar',
+                task.story_points,
+                task.sprint.name if task.sprint else '',
+            ])
+
+        # charset utf-8-sig: el BOM se escribe una sola vez al codificar el contenido completo
+        response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+        response['Content-Disposition'] = f'attachment; filename="{project.key}-backlog.csv"'
+        response.write(buffer.getvalue())
+        return response
+
+    @action(detail=True, methods=['post'])
+    def update_member_role(self, request, pk=None):
+        """
+        Cambia el rol de un miembro del proyecto (PRJ-06).
+        Solo Owner/Admin. No se puede asignar 'owner' ni cambiar el rol del propietario.
+        """
+        project = self.get_object()
+        user_id = request.data.get('user_id')
+        new_role = request.data.get('role')
+
+        allowed_roles = ['admin', 'developer', 'viewer']
+        if new_role not in allowed_roles:
+            return Response(
+                {"error": f"Rol inválido. Debe ser uno de: {', '.join(allowed_roles)}."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            member = Member.objects.get(project=project, user_id=user_id)
+        except (Member.DoesNotExist, ValueError):
+            return Response(
+                {"error": "El usuario no es miembro de este proyecto."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if member.user_id == project.owner_id:
+            return Response(
+                {"error": "No se puede cambiar el rol del propietario del proyecto."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        member.role = new_role
+        member.save()
+        return Response(
+            {"message": f"Rol de {member.user.email} actualizado a '{new_role}'."},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['post'])
+    def remove_member(self, request, pk=None):
+        """
+        Elimina a un miembro del proyecto (PRJ-06).
+        Solo Owner/Admin. No se puede eliminar al propietario.
+        """
+        project = self.get_object()
+        user_id = request.data.get('user_id')
+
+        try:
+            member = Member.objects.get(project=project, user_id=user_id)
+        except (Member.DoesNotExist, ValueError):
+            return Response(
+                {"error": "El usuario no es miembro de este proyecto."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if member.user_id == project.owner_id or member.role == 'owner':
+            return Response(
+                {"error": "No se puede eliminar al propietario del proyecto."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        email = member.user.email
+        member.delete()
+        return Response(
+            {"message": f"Miembro {email} eliminado del proyecto."},
+            status=status.HTTP_200_OK
+        )
 
 
 class ColumnViewSet(viewsets.ModelViewSet):
