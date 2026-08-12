@@ -14,18 +14,6 @@ export function NexusChatDrawer() {
   const [isFetchingHistory, setIsFetchingHistory] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (isOpen && projectId) {
-      loadHistory()
-    }
-  }, [isOpen, projectId])
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
-
   const loadHistory = async () => {
     if (!projectId) return
     setIsFetchingHistory(true)
@@ -38,6 +26,18 @@ export function NexusChatDrawer() {
       setIsFetchingHistory(false)
     }
   }
+
+  useEffect(() => {
+    if (isOpen && projectId) {
+      loadHistory()
+    }
+  }, [isOpen, projectId])
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,7 +57,7 @@ export function NexusChatDrawer() {
     try {
       const aiRes = await sendMessageApi(projectId, userMsg.content)
       addMessage(aiRes)
-    } catch (err) {
+    } catch {
       toast.error('Nexus AI offline')
     } finally {
       setIsLoading(false)

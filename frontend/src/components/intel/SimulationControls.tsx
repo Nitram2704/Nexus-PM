@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ShieldAlert, Zap, Users, Calendar, BarChart3, RefreshCcw } from 'lucide-react';
 
 interface SimulationResult {

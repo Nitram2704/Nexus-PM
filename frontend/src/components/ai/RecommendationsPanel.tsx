@@ -21,7 +21,7 @@ export default function RecommendationsPanel({ projectId, isOpen, onClose }: Rec
       setLoading(true)
       const data = await getRecommendationsApi(projectId)
       setRecommendations(Array.isArray(data) ? data : [])
-    } catch (err) {
+    } catch {
       setError('Error al cargar recomendaciones.')
     } finally {
       setLoading(false)
@@ -40,7 +40,7 @@ export default function RecommendationsPanel({ projectId, isOpen, onClose }: Rec
       setError(null)
       const data = await generateRecommendationsApi(projectId)
       setRecommendations(prev => [...data, ...prev])
-    } catch (err) {
+    } catch {
       setError('Error al generar recomendaciones.')
     } finally {
       setGenerating(false)
@@ -51,7 +51,7 @@ export default function RecommendationsPanel({ projectId, isOpen, onClose }: Rec
     try {
       await updateRecommendationApi(projectId, id, status)
       setRecommendations(prev => prev.map(r => r.id === id ? { ...r, status } : r))
-    } catch (err) {
+    } catch {
       setError('Error al actualizar el estado.')
     }
   }

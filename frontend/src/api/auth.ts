@@ -14,8 +14,15 @@ export const registerApi = (data: {
 
 export const getMeApi = () => apiClient.get<User>('/auth/me/')
 
+export const updateProfileApi = (data: {
+  first_name?: string
+  last_name?: string
+  bio?: string
+  avatar?: string | null
+}) => apiClient.patch<User>('/auth/me/', data)
+
 export const forgotPasswordApi = (email: string) =>
   apiClient.post('/auth/password-reset/', { email })
 
-export const resetPasswordApi = (uidb64: string, token: string, data: any) =>
+export const resetPasswordApi = (uidb64: string, token: string, data: Record<string, unknown>) =>
   apiClient.post(`/auth/password-reset-confirm/${uidb64}/${token}/`, data)

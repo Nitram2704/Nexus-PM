@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, User, MessageSquare, BarChart3, Search, X, AlertCircle, Sparkles } from 'lucide-react'
+import { Loader2, Plus, User, Users, MessageSquare, BarChart3, Search, X, AlertCircle, Sparkles } from 'lucide-react'
 import { getProjectDetailApi } from '@/api/projects'
 import { getSprintsApi } from '@/api/sprints'
 import { createTaskApi } from '@/api/tasks'
@@ -18,6 +18,7 @@ import { BurndownChart } from '@/components/reports/BurndownChart'
 import { SprintAISummary } from '@/components/reports/SprintAISummary'
 import { Modal } from '@/components/Modal'
 import RecommendationsPanel from '@/components/ai/RecommendationsPanel'
+import { TeamPanel } from '@/components/projects/TeamPanel'
 import { useUIStore } from '@/store/uiStore'
 import { 
   renameColumnApi, 
@@ -44,6 +45,7 @@ export function KanbanPage() {
   const [newTaskTitle, setNewTaskTitle] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [isTeamOpen, setIsTeamOpen] = useState(false)
   const [isRecommendationsOpen, setIsRecommendationsOpen] = useState(false)
   const { toggleIntelligence } = useUIStore()
   const [isReportsOpen, setIsReportsOpen] = useState(false)
@@ -75,50 +77,36 @@ export function KanbanPage() {
     columnName: ''
   })
 
+  const loadProject = async () => {
+    if (!projectId) return
+    try {
+      const [projectRes, sprintRes] = await Promise.all([
+        getProjectDetailApi(projectId),
+        getSprintsApi(projectId)
+      ])
+      
+      setProject(projectRes.data || null)
+      setSprints(Array.isArray(sprintRes.data) ? sprintRes.data : [])
+      
+      if (projectRes.data) {
+        setActiveProject(projectRes.data)
+      }
+    } catch (err) {
+      console.error('Error loading project', err)
+      toast.error('No se pudo cargar el proyecto.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (projectId) {
       loadProject()
     }
   }, [projectId])
 
-  /*
-  useEffect(() => {
-    if (!projectId) return
-
-    // Subscribe to task and column changes for realtime updates
-    const channel = supabase
-      .channel('kanban-realtime')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'tasks_task'
-        },
-        (_payload: any) => {
-          // Optional: only refresh if the task belongs to this project
-          // (Requires checking payload.new.project_id if available)
-          loadProject()
-        }
-      )
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'projects_column'
-        },
-        () => {
-          loadProject()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [projectId])
-  */
+  // Cleanup project from store on unmount
+  useEffect(() => () => { setActiveProject(null) }, [])
 
   const handleCreateTask = async (columnId: string) => {
     if (!newTaskTitle.trim() || !project || !activeSprint) return
@@ -146,7 +134,7 @@ export function KanbanPage() {
       setNewTaskTitle('')
       setAddingTaskToColumn(null)
       toast.success('Tarea creada')
-    } catch (err) {
+    } catch {
       toast.error('Error al crear tarea')
     } finally {
       setIsCreating(false)
@@ -162,37 +150,12 @@ export function KanbanPage() {
       setIsAddingColumn(false)
       toast.success('Columna creada')
       loadProject() // Refresh to get the new column with its tasks field initialized
-    } catch (err) {
+    } catch {
       toast.error('Error al crear columna')
     } finally {
       setIsCreatingColumn(false)
     }
   }
-
-  const loadProject = async () => {
-    if (!projectId) return
-    try {
-      const [projectRes, sprintRes] = await Promise.all([
-        getProjectDetailApi(projectId),
-        getSprintsApi(projectId)
-      ])
-      
-      setProject(projectRes.data || null)
-      setSprints(Array.isArray(sprintRes.data) ? sprintRes.data : [])
-      
-      if (projectRes.data) {
-        setActiveProject(projectRes.data)
-      }
-    } catch (err) {
-      console.error('Error loading project', err)
-      toast.error('No se pudo cargar el proyecto.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Cleanup project from store on unmount
-  useEffect(() => () => { setActiveProject(null) }, [])
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, type } = result
@@ -212,7 +175,7 @@ export function KanbanPage() {
       
       try {
         await reorderColumnsApi(project.id, newColumns.map(c => c.id))
-      } catch (err) {
+      } catch {
         toast.error('Error al reordenar columnas')
         loadProject() // Rollback
       }
@@ -255,7 +218,7 @@ export function KanbanPage() {
       await reorderTasksApi(destination.droppableId, taskIds)
       // Opcional: silenciamos el toast para no saturar 
       // toast.success('Orden actualizado', { duration: 1500, position: 'bottom-right' })
-    } catch (err) {
+    } catch {
       toast.error('Error al reordenar la tarea')
       loadProject() // Rollback
     }
@@ -283,7 +246,7 @@ export function KanbanPage() {
         }
       })
       toast.success('Columna renombrada')
-    } catch (err) {
+    } catch {
       toast.error('Error al renombrar columna')
     } finally {
       setBusyColumnId(null)
@@ -323,8 +286,9 @@ export function KanbanPage() {
         })
         toast.success(`Columna '${columnName}' eliminada`)
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al procesar la acción')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(msg || 'Error al procesar la acción')
     } finally {
       setBusyColumnId(null)
       setConfirmConfig({ isOpen: false, type: null, columnId: '', columnName: '' })
@@ -403,7 +367,15 @@ export function KanbanPage() {
         </div>
 
         <div className="kanban-header-actions">
-          <button 
+          <button
+            className="btn-tactical"
+            onClick={() => setIsTeamOpen(true)}
+            title="Gestionar equipo del proyecto"
+          >
+            <Users size={14} />
+            TEAM
+          </button>
+          <button
             className="btn-tactical"
             onClick={() => setIsRecommendationsOpen(true)}
             title="Ver recomendaciones de la IA"
@@ -680,6 +652,13 @@ export function KanbanPage() {
           onClose={() => setIsRecommendationsOpen(false)}
         />
       )}
+
+      <TeamPanel
+        isOpen={isTeamOpen}
+        onClose={() => setIsTeamOpen(false)}
+        project={project}
+        onChanged={loadProject}
+      />
 
 
 

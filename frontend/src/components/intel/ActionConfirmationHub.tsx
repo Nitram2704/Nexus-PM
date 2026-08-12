@@ -5,6 +5,7 @@ import api from '@/lib/apiClient';
 interface ProposedAction {
   id: string;
   action_type: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params: any;
   status: string;
   created_at: string;

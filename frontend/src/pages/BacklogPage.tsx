@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
-import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles, Bot } from 'lucide-react'
-import { getProjectDetailApi } from '@/api/projects'
+import { Loader2, Plus, ChevronDown, ChevronRight, MoreHorizontal, User, Sparkles, Bot, Download } from 'lucide-react'
+import { exportBacklogCsvApi, getProjectDetailApi } from '@/api/projects'
 import { Modal } from '@/components/Modal'
 import { getSprintsApi, createSprintApi, startSprintApi, completeSprintApi } from '@/api/sprints'
 import { getTasksApi, createTaskApi, updateTaskApi } from '@/api/tasks'
@@ -27,15 +27,6 @@ export function BacklogPage() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [isAgentModalOpen, setIsAgentModalOpen] = useState(false)
   const [newTaskSprintId, setNewTaskSprintId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (projectId) {
-      loadData()
-    }
-  }, [projectId])
-
-  // Cleanup project from store on unmount
-  useEffect(() => () => { setActiveProject(null) }, [])
 
   const loadData = async () => {
     if (!projectId) return
@@ -72,12 +63,21 @@ export function BacklogPage() {
       })
       setExpandedSprints(initialExpanded)
 
-    } catch (err) {
+    } catch {
       toast.error('Error al cargar datos del backlog')
     } finally {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (projectId) {
+      loadData()
+    }
+  }, [projectId])
+
+  // Cleanup project from store on unmount
+  useEffect(() => () => { setActiveProject(null) }, [])
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, draggableId } = result
@@ -89,13 +89,36 @@ export function BacklogPage() {
       await updateTaskApi(draggableId, { sprint: sprintId })
       toast.success('Planificación actualizada', { duration: 1500 })
       loadData()
-    } catch (err) {
+    } catch {
       toast.error('Error al mover la tarea')
     }
   }
 
   const toggleExpand = (id: string) => {
     setExpandedSprints(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportCsv = async () => {
+    if (!projectId || !project) return
+    setIsExporting(true)
+    try {
+      const res = await exportBacklogCsvApi(projectId)
+      const url = URL.createObjectURL(res.data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${project.key}-backlog.csv`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Backlog exportado')
+    } catch {
+      toast.error('Error al exportar el backlog')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   if (isLoading) {
@@ -115,7 +138,16 @@ export function BacklogPage() {
           <span className="backlog-project-key">{project?.key}</span>
         </div>
          <div className="backlog-header-actions">
-          <button 
+          <button
+            className="btn-secondary flex items-center gap-2"
+            onClick={handleExportCsv}
+            disabled={isExporting}
+            title="Descargar backlog en CSV"
+          >
+            {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+            EXPORT_CSV
+          </button>
+          <button
             className="btn-secondary flex items-center gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
             onClick={() => setIsAIModalOpen(true)}
           >
@@ -261,7 +293,13 @@ export function BacklogPage() {
   )
 }
 
-function SprintContainer({ sprint, tasks, isExpanded, onToggle, onCreateTask }: any) {
+function SprintContainer({ sprint, tasks, isExpanded, onToggle, onCreateTask }: {
+  sprint: Sprint
+  tasks: Task[]
+  isExpanded: boolean
+  onToggle: () => void
+  onCreateTask: () => void
+}) {
   return (
     <div className="sprint-container">
       <div className="sprint-header" onClick={onToggle}>
@@ -327,7 +365,7 @@ function SprintContainer({ sprint, tasks, isExpanded, onToggle, onCreateTask }: 
 }
 
 function TaskItem({ task, index }: { task: Task, index: number }) {
-  const typeIcons: any = {
+  const typeIcons: Record<string, React.ReactNode> = {
     story: <div className="task-type-icon icon-story">S</div>,
     bug: <div className="task-type-icon icon-bug">B</div>,
     task: <div className="task-type-icon icon-task">T</div>,
@@ -360,7 +398,12 @@ function TaskItem({ task, index }: { task: Task, index: number }) {
   )
 }
 
-function CreateSprintModal({ isOpen, onClose, projectId, onSuccess }: any) {
+function CreateSprintModal({ isOpen, onClose, projectId, onSuccess }: {
+  isOpen: boolean
+  onClose: () => void
+  projectId: string
+  onSuccess: () => void
+}) {
   const [formData, setFormData] = useState({ name: '', goal: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -411,7 +454,13 @@ function CreateSprintModal({ isOpen, onClose, projectId, onSuccess }: any) {
   )
 }
 
-function CreateTaskModal({ isOpen, onClose, projectId, sprintId, onSuccess }: any) {
+function CreateTaskModal({ isOpen, onClose, projectId, sprintId, onSuccess }: {
+  isOpen: boolean
+  onClose: () => void
+  projectId: string
+  sprintId: string | null
+  onSuccess: () => void
+}) {
   const [formData, setFormData] = useState({ title: '', type: 'task', priority: 'medium', story_points: 0 })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -419,7 +468,7 @@ function CreateTaskModal({ isOpen, onClose, projectId, sprintId, onSuccess }: an
     e.preventDefault()
     setIsSubmitting(true)
     try {
-      await createTaskApi({ ...formData, project: projectId, sprint: sprintId } as any)
+      await createTaskApi({ ...formData, project: projectId, sprint: sprintId } as Partial<Task>)
       toast.success('Tarea creada')
       onSuccess()
       onClose()
@@ -462,7 +511,7 @@ function CreateTaskModal({ isOpen, onClose, projectId, sprintId, onSuccess }: an
             <select 
               className="form-control"
               value={formData.priority}
-              onChange={e => setFormData({ ...formData, priority: e.target.value as any })}
+              onChange={e => setFormData({ ...formData, priority: e.target.value as Task['priority'] })}
             >
               <option value="low">Baja</option>
               <option value="medium">Media</option>

@@ -7,6 +7,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { ProjectsPage } from '@/pages/ProjectsPage'
 import { KanbanPage } from '@/pages/KanbanPage'
 import { BacklogPage } from '@/pages/BacklogPage'
 import InsightsPage from '@/pages/InsightsPage'
@@ -35,6 +36,7 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/projects" element={<ProjectsPage />} />
               <Route path="/project/:projectId/kanban" element={<KanbanPage />} />
               <Route path="/project/:projectId/backlog" element={<BacklogPage />} />
               <Route path="/project/:projectId/insights" element={<InsightsPage />} />

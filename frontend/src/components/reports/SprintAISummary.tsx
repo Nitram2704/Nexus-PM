@@ -10,18 +10,15 @@ export function SprintAISummary({ sprintId }: { sprintId: string }) {
   const [isUnauthorized, setIsUnauthorized] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    fetchSummary()
-  }, [sprintId])
-
   const fetchSummary = async () => {
     setLoading(true)
     setIsUnauthorized(false)
     try {
       const response = await apiClient.get(`/sprints/${sprintId}/summary/`)
       setSummary(response.data.summary)
-    } catch (err: any) {
-      if (err.response?.status === 403) {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
         setIsUnauthorized(true)
       } else {
         toast.error('No se pudo generar el resumen con IA.')
@@ -31,6 +28,10 @@ export function SprintAISummary({ sprintId }: { sprintId: string }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchSummary()
+  }, [sprintId])
 
   const handleCopy = () => {
     if (!summary) return

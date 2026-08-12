@@ -1,8 +1,8 @@
 import { User, Bot } from 'lucide-react'
-import type { ChatMessage } from '@/store/chatStore'
+import type { AIMessage } from '@/api/ai'
 
 interface Props {
-  message: ChatMessage
+  message: AIMessage
 }
 
 export function MessageBubble({ message }: Props) {

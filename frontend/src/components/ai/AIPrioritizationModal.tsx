@@ -38,7 +38,7 @@ export function AIPrioritizationModal({ isOpen, onClose, projectId, onSuccess }:
       toast.success('Backlog priorizado correctamente ✨')
       onSuccess()
       onClose()
-    } catch (_err) {
+    } catch {
       toast.error('Error al aplicar la priorización')
     } finally {
       setIsApplying(false)

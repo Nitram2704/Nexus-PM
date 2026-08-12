@@ -50,21 +50,21 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
             
             const initial = new Set<string>()
             if (genMode === 'backlog') {
-                data.data.forEach((epic: { items: any[] }, eIdx: number) => {
-                    epic.items.forEach((_: any, iIdx: number) => {
+                data.data.forEach((epic: { items: Array<Record<string, unknown>> }, eIdx: number) => {
+                    epic.items.forEach((_: Record<string, unknown>, iIdx: number) => {
                         initial.add(`${eIdx}-${iIdx}`)
                     })
                 })
             } else {
                 // Para historias de usuario, guardamos una copia editable
                 setEditableItems(data.data as AIStoryProposal[])
-                data.data.forEach((_: any, idx: number) => {
+                data.data.forEach((_: unknown, idx: number) => {
                     initial.add(idx.toString())
                 })
             }
             setSelectedIndices(initial)
             setStep('results')
-        } catch (_err) {
+        } catch {
             toast.error('Error al generar las sugerencias. Intenta de nuevo.')
             setStep('input')
         }
@@ -117,7 +117,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
             toast.success(`${selectedIndices.size} tareas importadas con éxito ✨`)
             onSuccess()
             onClose()
-        } catch (_err) {
+        } catch {
             toast.error('Error al importar las tareas.')
         } finally {
             setIsImporting(false)
@@ -199,7 +199,7 @@ export function AISuggestionModal({ isOpen, onClose, projectId, onSuccess }: AIS
                     <div className="max-h-[450px] overflow-y-auto pr-2 flex flex-col gap-4">
                         {mode === 'backlog' ? (
                             // Renderizado de Backlog (Épicas)
-                            (proposal.data as any[]).map((epic: { epic: string, items: any[] }, eIdx: number) => (
+                            (proposal.data as Array<{ epic: string, items: Array<{ title: string, priority: string, description: string }> }>).map((epic, eIdx) => (
                                 <div key={eIdx} className="flex flex-col gap-3">
                                     <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
                                         <Layout size={14} className="text-blue-400" />

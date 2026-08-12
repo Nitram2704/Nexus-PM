@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { getDashboardDataApi } from '@/api/dashboard'
+import type { DashboardTask, DashboardProject } from '@/api/dashboard'
 
 export function DashboardPage() {
   const { user } = useAuthStore()
@@ -112,7 +113,7 @@ export function DashboardPage() {
           <div className="flex-1 min-h-0 overflow-auto">
             {data?.tasks && data.tasks.length > 0 ? (
               <div className="divide-y divide-white/5">
-                {data.tasks.map((task: any) => (
+                {data.tasks.map((task: DashboardTask) => (
                   <WorkItem key={task.id} task={task} />
                 ))}
               </div>
@@ -134,15 +135,21 @@ export function DashboardPage() {
         <div className="col-span-3 row-span-1 border border-white/5 flex flex-col min-h-0 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-4 h-px bg-cyan-400/40" />
 
-          <div className="px-4 pt-3 pb-2 border-b border-white/5 shrink-0">
+          <div className="px-4 pt-3 pb-2 border-b border-white/5 shrink-0 flex items-center justify-between">
             <div className="font-mono text-[8px] uppercase tracking-[0.25em] text-white/20 flex items-center gap-2">
               <FolderOpen className="w-3 h-3 text-white/15" />
               ECOSYSTEM
             </div>
+            <Link
+              to="/projects"
+              className="font-mono text-[8px] uppercase tracking-widest text-white/20 transition-colors hover:text-cyan-400"
+            >
+              Ver todos →
+            </Link>
           </div>
 
           <div className="flex-1 min-h-0 overflow-auto p-2 space-y-2">
-            {data?.projects?.map((project: any) => (
+            {data?.projects?.map((project: DashboardProject) => (
               <ProjectMiniCard key={project.id} project={project} />
             ))}
           </div>
@@ -206,7 +213,12 @@ export function DashboardPage() {
 
 /* ─────────────── Sub-components ─────────────── */
 
-function StatRow({ label, value, icon, accent }: any) {
+function StatRow({ label, value, icon, accent }: {
+  label: string
+  value: number
+  icon: React.ReactNode
+  accent: 'cyan' | 'amber' | 'emerald'
+}) {
   const borderColor = accent === 'cyan' ? 'border-l-cyan-400/30' : accent === 'amber' ? 'border-l-amber-400/30' : 'border-l-emerald-400/30'
   return (
     <div className={`border border-white/5 ${borderColor} border-l-2 p-3 flex items-center justify-between hover:bg-white/2 transition-colors`}>
@@ -219,7 +231,7 @@ function StatRow({ label, value, icon, accent }: any) {
   )
 }
 
-function WorkItem({ task }: any) {
+function WorkItem({ task }: { task: DashboardTask }) {
   return (
     <Link 
       to={`/project/${task.project_id}/kanban`}
@@ -245,7 +257,7 @@ function WorkItem({ task }: any) {
   )
 }
 
-function ProjectMiniCard({ project }: any) {
+function ProjectMiniCard({ project }: { project: DashboardProject }) {
   return (
     <Link 
       to={`/project/${project.id}/kanban`}

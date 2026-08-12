@@ -21,6 +21,19 @@ export default function NexusChat() {
 
   const { setTaskModalTitle, setAiSuggestionPrompt } = useProjectStore()
 
+  const loadHistory = async () => {
+    if (!projectId) return
+    setIsLoading(true)
+    try {
+      const history = await getChatHistoryApi(projectId)
+      setMessages(history)
+    } catch {
+      console.error('Failed to load chat history')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (projectId && messages.length === 0) {
       loadHistory()
@@ -32,19 +45,6 @@ export default function NexusChat() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
-
-  const loadHistory = async () => {
-    if (!projectId) return
-    setIsLoading(true)
-    try {
-      const history = await getChatHistoryApi(projectId)
-      setMessages(history)
-    } catch (error) {
-      console.error('Failed to load chat history', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleCommand = (cmd: string): boolean => {
     const lowerCmd = cmd.toLowerCase().trim()
@@ -110,7 +110,7 @@ export default function NexusChat() {
     try {
       const response = await sendMessageApi(projectId || 'global', userMsg)
       addMessage(response)
-    } catch (error) {
+    } catch {
       addSystemMessage('ERROR: Respuesta fallida del CORE_IA.')
     } finally {
       setIsLoading(false)

@@ -27,7 +27,7 @@ export function BacklogGenerator({ projectId, onImported }: BacklogGeneratorProp
             setProposal(data)
             setSelectedIndices(data.data.map((_, i) => i)) // Seleccionar todos por defecto
             toast.success('¡Backlog sugerido generado!')
-        } catch (err) {
+        } catch {
             toast.error('Error al generar el backlog. Intenta de nuevo.')
         } finally {
             setIsLoading(false)
@@ -50,7 +50,7 @@ export function BacklogGenerator({ projectId, onImported }: BacklogGeneratorProp
             setProposal(null)
             setDescription('')
             onImported()
-        } catch (err) {
+        } catch {
             toast.error('Error al importar las tareas.')
         } finally {
             setIsImporting(false)

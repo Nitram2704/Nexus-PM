@@ -24,4 +24,4 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
           })
         })
       })
-    } as any;
+    } as unknown as ReturnType<typeof createClient>;

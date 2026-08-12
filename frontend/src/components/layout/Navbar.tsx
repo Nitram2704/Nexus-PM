@@ -1,16 +1,21 @@
+import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { LogOut, Settings, Cpu } from 'lucide-react'
+import { LogOut, Settings, Cpu, FolderKanban } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
 import { useChatStore } from '@/store/chatStore'
 import { useUIStore } from '@/store/uiStore'
 import { NotificationBell } from '../notifications/NotificationBell'
+import { SettingsModal } from '../SettingsModal'
+import { ProfileModal } from '../ProfileModal'
 
 export function Navbar() {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const location = useLocation()
   const { projectId } = useParams<{ projectId?: string }>()
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
+  const { user, logout } = useAuthStore()
 
   const activeProject = useProjectStore((s) => s.activeProject)
   const { isIntelligenceOpen, toggleIntelligence } = useUIStore()
@@ -25,6 +30,11 @@ export function Navbar() {
   const isKanban = location.pathname.includes('/kanban')
   const isBacklog = location.pathname.includes('/backlog')
   const isInsights = location.pathname.includes('/insights')
+  const isProjects = location.pathname === '/projects'
+
+  const userInitials =
+    `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() ||
+    (user?.email?.[0]?.toUpperCase() ?? '?')
 
   return (
     <nav className="h-12 bg-black/60 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-6 sticky top-0 z-50">
@@ -35,6 +45,19 @@ export function Navbar() {
              <div className="w-2 h-2 bg-cyan-400/20 group-hover:bg-cyan-400/40 transition-colors"></div>
           </div>
           <span className="hidden sm:inline font-bold tracking-widest text-white">NEXUS_PM // INIT</span>
+        </Link>
+
+        <div className="w-2 h-px bg-white/20 mx-2" />
+        <Link
+          to="/projects"
+          className={`flex items-center gap-1.5 px-3 py-1 border transition-all ${
+            isProjects
+              ? 'border-cyan-400 text-cyan-400 bg-cyan-400/5'
+              : 'border-transparent text-white/40 hover:text-white'
+          }`}
+        >
+          <FolderKanban className="w-3 h-3" />
+          <span className="hidden md:inline">PROJECTS</span>
         </Link>
 
         {isProjectSection && activeProject && (
@@ -71,8 +94,30 @@ export function Navbar() {
         </button>
         
         <NotificationBell />
-        
-        <button className="text-white/40 hover:text-white transition-colors flex items-center gap-2">
+
+        <button
+          onClick={() => setIsProfileOpen(true)}
+          title="Perfil de usuario"
+          className="flex items-center gap-2 border border-white/5 px-3 py-1 text-white/40 transition-all hover:border-cyan-400/30 hover:text-white"
+        >
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt={user.first_name || user.email}
+              className="h-4 w-4 object-cover"
+            />
+          ) : (
+            <span className="flex h-4 w-4 items-center justify-center bg-cyan-400/10 font-mono text-[7px] font-bold text-cyan-400">
+              {userInitials}
+            </span>
+          )}
+          <span className="hidden lg:inline">{(user?.first_name || user?.email || 'OPERATOR').toUpperCase()}</span>
+        </button>
+
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className={`text-white/40 hover:text-white transition-colors flex items-center gap-2 border border-transparent px-3 py-1 ${isSettingsOpen ? 'text-cyan-400 bg-cyan-400/5 border-cyan-400/20' : 'hover:border-white/5'}`}
+        >
           <Settings className="w-3 h-3" />
           <span className="hidden lg:inline">CONFIG</span>
         </button>
@@ -82,6 +127,10 @@ export function Navbar() {
           <span className="hidden sm:inline">EXIT_SESSION</span>
         </button>
       </div>
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
     </nav>
   )
 }
+

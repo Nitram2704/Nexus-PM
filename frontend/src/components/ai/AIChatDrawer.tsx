@@ -20,6 +20,7 @@ export function AIChatDrawer({ isOpen, onClose, projectId, project, onTaskCreate
   const [isLoading, setIsLoading] = useState(false)
   const [isCreatingTask, setIsCreatingTask] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [tokenId] = useState(() => Math.random().toString(36).substring(7).toUpperCase())
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -48,7 +49,7 @@ export function AIChatDrawer({ isOpen, onClose, projectId, project, onTaskCreate
         parts: [{ text: response.response }]
       }
       setMessages(prev => [...prev, aiMessage])
-    } catch (_err) {
+    } catch {
       toast.error('Error al conectar con el agente')
     } finally {
       setIsLoading(false)
@@ -60,7 +61,7 @@ export function AIChatDrawer({ isOpen, onClose, projectId, project, onTaskCreate
     if (match) {
       try {
         return JSON.parse(match[1])
-      } catch (_e) {
+      } catch {
         return null
       }
     }
@@ -86,7 +87,7 @@ export function AIChatDrawer({ isOpen, onClose, projectId, project, onTaskCreate
         role: 'model',
         parts: [{ text: `✅ ¡Hecho! He creado la tarea: **${suggestion.title}**` }]
       }])
-    } catch (_err) {
+    } catch {
       toast.error('Error al crear la tarea sugerida')
     } finally {
       setIsCreatingTask(false)
@@ -249,7 +250,7 @@ export function AIChatDrawer({ isOpen, onClose, projectId, project, onTaskCreate
             </div>
             <div className="flex items-center justify-between mt-2 px-1">
                <span className="text-[6px] text-white/10 uppercase tracking-[0.3em]">SECURE_CHANNEL_v4.2</span>
-               <span className="text-[6px] text-white/10 uppercase tracking-[0.3em]">TOKEN_ID: {Math.random().toString(36).substring(7).toUpperCase()}</span>
+               <span className="text-[6px] text-white/10 uppercase tracking-[0.3em]">TOKEN_ID: {tokenId}</span>
             </div>
           </div>
         </motion.div>

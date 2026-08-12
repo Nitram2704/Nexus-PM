@@ -1,5 +1,20 @@
-import axios from 'axios'
+import axios, { isAxiosError } from 'axios'
 import { useAuthStore } from '@/store/authStore'
+
+export const getApiErrorMessage = (err: unknown, fallback: string): string => {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as unknown
+    if (typeof data === 'string' && data) return data
+    if (typeof data === 'object' && data !== null) {
+      const flat = Object.values(data as Record<string, unknown>)
+        .flat()
+        .map((v) => String(v))
+        .join(' ')
+      if (flat) return flat
+    }
+  }
+  return fallback
+}
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api',

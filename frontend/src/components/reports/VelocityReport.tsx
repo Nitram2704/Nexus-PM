@@ -23,10 +23,6 @@ export function VelocityReport({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [isUnauthorized, setIsUnauthorized] = useState(false)
 
-  useEffect(() => {
-    fetchVelocity()
-  }, [projectId])
-
   const fetchVelocity = async () => {
     setLoading(true)
     setError(null)
@@ -34,8 +30,9 @@ export function VelocityReport({ projectId }: { projectId: string }) {
     try {
       const response = await apiClient.get(`/projects/${projectId}/velocity/`)
       setData(response.data)
-    } catch (err: any) {
-      if (err.response?.status === 403) {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
         setIsUnauthorized(true)
       } else {
         setError('No se pudo cargar el reporte de velocidad.')
@@ -45,6 +42,10 @@ export function VelocityReport({ projectId }: { projectId: string }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchVelocity()
+  }, [projectId])
 
   if (loading) {
     return (

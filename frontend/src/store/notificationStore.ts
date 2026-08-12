@@ -73,7 +73,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           unreadCount: nots.filter(n => !n.is_read).length
         }
       })
-    } catch (e) {}
+    } catch {
+      // Silently handle read errors
+    }
   },
 
   markAllRead: async () => {
@@ -86,6 +88,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           unreadCount: 0
         }
       })
-    } catch (e) {}
+    } catch {
+      // Silently handle mark-all errors
+    }
   }
 }))

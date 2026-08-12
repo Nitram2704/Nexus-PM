@@ -19,6 +19,7 @@ export interface AIEpicProposal {
 export interface AIProposal {
     id: string
     description: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Backend returns heterogeneous arrays
     data: any[] // Puede ser AIEpicProposal[] o AIStoryProposal[]
     created_at: string
     is_imported: boolean
@@ -45,7 +46,7 @@ export interface AIMessage {
     role: 'user' | 'assistant'
     content: string
     created_at: string
-    action_metadata?: any
+    action_metadata?: Record<string, unknown>
 }
 
 // Alias for AIChatDrawer compatibility
@@ -61,7 +62,8 @@ export const sendMessageApi = async (projectId: string, content: string) => {
 }
 
 // Alias for AIChatDrawer compatibility
-export const projectChatApi = async (projectId: string, content: string, _history?: any[]) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Legacy compat param, used by callers
+export const projectChatApi = async (projectId: string, content: string, _history?: unknown[]) => {
     const data = await sendMessageApi(projectId, content)
     return { response: data.content }
 }
@@ -78,7 +80,7 @@ export const orchestrateEpicApi = async (projectId: string, epicDescription: str
 
 export interface AIPrioritizationSuggestion {
     ordered_ids: string[]
-    explanation: string
+    reasoning: string
 }
 
 export const getBacklogPrioritizationApi = async (projectId: string) => {

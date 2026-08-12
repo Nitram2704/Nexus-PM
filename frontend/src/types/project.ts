@@ -14,12 +14,14 @@ export interface Sprint {
   updated_at: string
 }
 
+export type MemberRole = 'owner' | 'admin' | 'developer' | 'viewer'
+
 export interface Member {
   id: string
   user: number
   user_email: string
   user_name: string
-  role: 'owner' | 'admin' | 'member' | 'viewer'
+  role: MemberRole
   joined_at: string
 }
 
@@ -71,10 +73,35 @@ export interface Project {
   description: string | null
   is_archived: boolean
   task_counter: number
+  member_count?: number
   columns: Column[]
   members: Member[]
   created_at: string
   updated_at: string
+}
+
+export interface ProjectSummary {
+  id: string
+  name: string
+  key: string
+  description: string | null
+  is_archived: boolean
+  member_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectCreateData {
+  name: string
+  key: string
+  description?: string
+}
+
+export interface ProjectUpdateData {
+  name?: string
+  key?: string
+  description?: string
+  is_archived?: boolean
 }
 
 export interface ProjectAnalytics {

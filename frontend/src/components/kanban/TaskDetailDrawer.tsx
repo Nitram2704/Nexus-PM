@@ -20,22 +20,13 @@ export function TaskDetailDrawer({ task, members, onClose, onUpdate }: TaskDetai
   const [priority, setPriority] = useState<Task['priority']>('medium')
   const [assignee, setAssignee] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (task) {
-      loadComments()
-      setDescription(task.description || '')
-      setPriority(task.priority)
-      setAssignee(task.assignee)
-    }
-  }, [task])
-
   const loadComments = async () => {
     if (!task) return
     try {
       const res = await getTaskCommentsApi(task.id)
       setComments(res.data)
-    } catch (err) {
-      console.error('Error loading comments', err)
+    } catch {
+      console.error('Error loading comments')
     }
   }
 
@@ -49,22 +40,31 @@ export function TaskDetailDrawer({ task, members, onClose, onUpdate }: TaskDetai
       setComments([...comments, res.data])
       setNewComment('')
       toast.success('Comentario añadido')
-    } catch (err) {
+    } catch {
       toast.error('Error al añadir comentario')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const handleUpdateField = async (field: keyof Task, value: any) => {
+  const handleUpdateField = async (field: keyof Task, value: Task[keyof Task]) => {
     if (!task) return
     try {
       const res = await updateTaskApi(task.id, { [field]: value })
       onUpdate(res.data)
-    } catch (err) {
+    } catch {
       toast.error('Error al actualizar')
     }
   }
+
+  useEffect(() => {
+    if (task) {
+      loadComments()
+      setDescription(task.description || '')
+      setPriority(task.priority)
+      setAssignee(task.assignee)
+    }
+  }, [task])
 
   if (!task) return null
 

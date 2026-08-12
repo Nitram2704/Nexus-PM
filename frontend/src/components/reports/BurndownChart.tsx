@@ -23,10 +23,6 @@ export function BurndownChart({ sprintId }: { sprintId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [isUnauthorized, setIsUnauthorized] = useState(false)
 
-  useEffect(() => {
-    fetchBurndown()
-  }, [sprintId])
-
   const fetchBurndown = async () => {
     setLoading(true)
     setError(null)
@@ -34,8 +30,9 @@ export function BurndownChart({ sprintId }: { sprintId: string }) {
     try {
       const response = await apiClient.get(`/sprints/${sprintId}/burndown/`)
       setData(response.data)
-    } catch (err: any) {
-      if (err.response?.status === 403) {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
         setIsUnauthorized(true)
       } else {
         setError('No se pudo cargar el gráfico de Burndown.')
@@ -45,6 +42,10 @@ export function BurndownChart({ sprintId }: { sprintId: string }) {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchBurndown()
+  }, [sprintId])
 
   if (loading) {
     return (
