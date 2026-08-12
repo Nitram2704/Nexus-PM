@@ -21,7 +21,7 @@
 
 `Nexus-PM` is a full-stack project management web application built to mirror tools like Jira, but engineered from the ground up for the AI era.
 
-Instead of writing tickets manually, a built-in **AI Scrum Master** (powered by Google Gemma 4) converts vague requirements into structured backlogs and user stories, prioritizes your tasks, and provides sprint insights — all through natural language.
+Instead of writing tickets manually, a built-in **AI Scrum Master** (powered by Google `gemini-2.5-flash` via the `google-genai` SDK) converts vague requirements into structured backlogs and user stories, prioritizes your tasks, and provides sprint insights — all through natural language.
 
 **One platform. Complete Agile lifecycle. Fully AI-assisted.**
 
@@ -44,8 +44,8 @@ Instead of writing tickets manually, a built-in **AI Scrum Master** (powered by 
 
 - Node.js 18+
 - Python 3.10+
-- SQLite (default) or PostgreSQL
-- Google API Key (for Gemma 4 AI features, optional — falls back to mock data)
+- SQLite (default, zero config) or PostgreSQL (optional)
+- Google API Key (for `gemini-2.5-flash` AI features, optional — falls back to mock data)
 
 ### 2. Setup Backend (Django)
 
@@ -58,7 +58,11 @@ python -m venv venv
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in the `backend/` directory (copy from `backend/.env.example`):
+
+```bash
+cp .env.example .env
+```
 
 ```env
 SECRET_KEY=your-secret-key
@@ -66,6 +70,10 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 GOOGLE_API_KEY=your-google-api-key   # optional, mock mode if omitted
 ```
+
+> **Database:** SQLite is the default — if `DB_HOST` is omitted (or empty), Django uses a local `db.sqlite3` file with zero configuration. PostgreSQL is optional: set the `DB_*` variables (see `.env.example`) and install `psycopg2-binary`.
+>
+> **AI:** `GOOGLE_API_KEY` is optional — without it, all AI features fall back to mock data. With a key, the backend uses the `google-genai` SDK with model `gemini-2.5-flash`.
 
 Run migrations and start the server:
 
@@ -84,12 +92,19 @@ npm run dev
 
 ### 4. Environment Variables
 
-Create a `.env` file in the `frontend/` directory:
+Create a `.env` file in the `frontend/` directory (copy from `frontend/.env.example`):
+
+```bash
+cp .env.example .env
+```
 
 ```env
-VITE_SUPABASE_URL=your-supabase-url
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_API_URL=http://localhost:8000/api        # optional, this is the default
+VITE_SUPABASE_URL=your-supabase-url           # optional, realtime disabled if missing
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key # optional, realtime disabled if missing
 ```
+
+Full reference of all variables (backend + frontend) is documented in `backend/.env.example` and `frontend/.env.example`.
 
 🎉 **Done!** Open `http://localhost:5173` to access the Command Center.
 
@@ -121,7 +136,7 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 | SimpleJWT | 5.3 | JWT authentication |
 | django-cors-headers | 4.4 | CORS handling |
 | python-decouple | 3.8 | Environment config |
-| google-generativeai | — | Gemma 4 AI integration |
+| google-genai | >=1.0 | Gemini 2.5 Flash AI integration |
 
 ### Infrastructure
 
@@ -129,7 +144,7 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 |---|---|
 | Supabase | Auth & real-time database |
 | SQLite / PostgreSQL | Primary data store |
-| Google AI (Gemma 4) | Backlog & User Story generation |
+| Google AI (Gemini 2.5 Flash) | Backlog & User Story generation |
 
 ---
 
@@ -140,10 +155,10 @@ graph LR
     A[React SPA] -->|REST API| B(Django DRF)
     A -->|Auth & Realtime| S[(Supabase)]
     B -->|State| C[(SQLite / PostgreSQL)]
-    B <-->|LLM Queries| F[Google Gemma 4]
+    B <-->|LLM Queries| F[Gemini 2.5 Flash]
 ```
 
-The frontend communicates with the Django backend via REST API for all project, task, and sprint operations. AI features (backlog generation, user story creation) are processed synchronously through the Google Generative AI SDK, with automatic fallback to mock data when no API key is configured. Supabase handles supplementary auth and real-time capabilities on the client side.
+The frontend communicates with the Django backend via REST API for all project, task, and sprint operations. AI features (backlog generation, user story creation) are processed synchronously through the `google-genai` SDK (model `gemini-2.5-flash`), with automatic fallback to mock data when no API key is configured. Supabase handles supplementary auth and real-time capabilities on the client side.
 
 ---
 
@@ -154,7 +169,7 @@ Nexus-PM/
 ├── backend/
 │   ├── apps/
 │   │   ├── accounts/      # Custom User model, JWT auth, login rate limiting
-│   │   ├── intelligence/   # AI client (Gemma 4), backlog & story generation
+│   │   ├── intelligence/   # AI client (Gemini 2.5 Flash), backlog & story generation
 │   │   ├── projects/       # Projects, Members, Columns (Kanban), permissions
 │   │   └── tasks/          # Tasks, Sprints, Comments, ordering
 │   ├── nexus/              # Django settings, root URLs, WSGI
@@ -181,7 +196,7 @@ Nexus-PM/
 
 ## 🧠 AI Scrum Master
 
-The intelligence module uses **Google Gemma 4 (26B)** to power two core features:
+The intelligence module uses **Google `gemini-2.5-flash`** (via the `google-genai` SDK) to power two core features:
 
 | Feature | Endpoint | Description |
 |---|---|---|

@@ -2,109 +2,103 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-20)
+See: .planning/PROJECT.md (reconciled 2026-08-11)
 
 **Core value:** Un Product Owner describe requisitos en lenguaje natural y el Agente IA genera historias de usuario, prioriza el backlog y ofrece recomendaciones. El equipo gestiona sprints en un tablero Kanban con drag & drop.
-**Current focus:** Phase 1 — Foundation & Auth
+**Current focus:** Fase de Finalización — completar gaps de UI y preparar la demo.
 
 ## Current Position
 
-Phase: 1 — Foundation & Auth (Ready to Begin)
-Plan: 0 of 23 total plans across all phases
-Status: Planning complete. Ready to begin Phase 1.
-Last activity: 2026-04-20 — project planning, requirements documentation, and roadmap definition.
+Phase: 8 — Completion & Gap Closing (ver ROADMAP.md)
+Status: Funcionalidad core completa. Faltan features de UI y estabilización.
+Last activity: 2026-08-11 — auditoría completa del codebase vs planificación.
 
-Progress: [▓▓▓░░░░░░░] 30%
+Progress: [▓▓▓▓▓▓▓▓░░] ~80%
+
+## Reality Check (auditoría 2026-08-11)
+
+El plan original (`.planning/ROADMAP.md` de 2026-04-20) decía "Phase 1 Next, 0/23 planes".
+**La realidad:** el backend está ~95% completo y el frontend ~80%. El proyecto avanzó
+mucho más allá de lo registrado en los documentos de planificación.
+
+### Lo que SÍ está implementado (verificado en código)
+
+**Backend (5 apps, migraciones commiteadas):**
+- `accounts`: registro, login con rate limiting (LoginAttempt), password reset, /me, dashboard personal, JWT con blacklist
+- `projects`: CRUD completo, invite, analytics, hud_analytics, velocity, columnas (reorder, clear, move_all, reorder_tasks)
+- `tasks`: CRUD, move, sprints (start/complete/burndown/AI summary), comments
+- `intelligence`: generate-backlog, generate-user-stories, import-proposal, chat (+history), orchestrate (threading), foresight, simulate, prioritize, recommendations, proposed-actions
+- `notifications`: list, mark-read, bulk-read, stream SSE, settings
+
+**Frontend:**
+- Páginas: Dashboard, Kanban (1013 líneas), Backlog, Insights, Login, Register, ForgotPassword, ResetPassword
+- AI: BacklogGenerator, AIChatDrawer, NexusChat, RecommendationsPanel, AIPrioritizationModal
+- Reports: VelocityReport, BurndownChart, SprintAISummary
+- Intel: GlobalCommandDrawer, SimulationControls, ActionConfirmationHub, ForesightPanel
+- Notifications: NotificationBell + SettingsModal
+- Kanban: TaskDetailDrawer, ColumnMenu, AISuggestionModal, AgentOrchestrationModal, ConfirmDialog
+
+### Lo que FALTA (gaps verificados)
+
+**Críticos (bloquean la demo):**
+1. **UI de creación de proyectos** — no hay `createProjectApi` ni página/modal para crear proyectos. El usuario no puede crear un proyecto desde la UI. (PRJ-01)
+2. **UI de listado de proyectos** — solo mini-cards en dashboard. No hay página de proyectos con grid completo. (PRJ-03)
+3. **UI de edición/archivado de proyectos** — API existe, sin frontend. (PRJ-04, PRJ-05)
+4. **UI de invitación de miembros** — endpoint `/invite/` existe, sin frontend. (PRJ-02, PRJ-06)
+
+**Importantes:**
+5. **Exportar backlog a CSV** — sin backend ni frontend. (RPT-03)
+6. **Editar perfil de usuario** — sin UI. (AUTH-04)
+7. **`google-generativeai` no está en requirements.txt** — un fresh install rompe las features IA
+8. **Cambios sin commitear** — notifications (models/serializers/urls/views), tasks signals, requirements.txt, Navbar modificados; SettingsModal.tsx untracked
+
+**Menores / polish:**
+9. **Etiquetas/tags en tareas** — el modelo Task no tiene campo tags. (BKL-01 parcial)
+10. **Historial de cambios de tarea** — no implementado. (BKL-09)
+11. **Límites WIP por columna** — el modelo Column no tiene wip_limit. (KBN-04)
+12. **Verificación de email post-registro** — no implementada. (AUTH-01)
+13. **Tests** — solo `projects/tests/test_analytics.py`. Sin tests de frontend.
+14. **CI/CD** — no existe ningún workflow
+15. **`.env.example`** — no existe para backend ni frontend
+16. **Empty states y loading skeletons** — parcial
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 3
-- Execution strategy: Sequential phases (Current focus on Phase 3: Backlog & Sprints)
-- Result: Backend infrastructure for Sprints and Tasks completed.
+**By Phase (estado real):**
 
-**By Phase:**
-
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 1. Foundation & Auth | 1/4 | ▓ In Progress |
-| 2. Project Management | 1/3 | ✅ Done |
-| 3. Backlog & Sprints | 1/4 | ▓ In Progress (BE ✅) |
-| 4. Kanban Board | 0/3 | ⏳ Waiting |
-| 5. AI Agent (Scrum Master) | 0/4 | ⏳ Waiting |
-| 6. Notifications | 0/2 | ⏳ Waiting |
-| 7. Reports & Demo Polish | 0/3 | ⏳ Waiting |
+| Phase | Backend | Frontend | Status |
+|-------|---------|----------|--------|
+| 1. Foundation & Auth | ✅ 100% | ⚠️ 90% (falta perfil) | Casi done |
+| 2. Project Management | ✅ 100% | ❌ 30% (falta UI CRUD) | **Gap crítico** |
+| 3. Backlog & Sprints | ✅ 100% | ✅ 90% | Casi done |
+| 4. Kanban Board | ✅ 100% | ✅ 95% | Casi done |
+| 5. AI Agent | ✅ 100%+ | ✅ 95% | Done + extras |
+| 6. Notifications | ✅ 100% | ✅ 95% | Done |
+| 7. Reports & Polish | ⚠️ 80% (falta CSV) | ⚠️ 70% | Parcial |
 
 ## Accumulated Context
 
-### Key Decisions
+### Key Decisions (reales, no las del plan original)
 
-- **Frontend Stack:** React 18 + Vite + Tailwind CSS + TypeScript. Zustand for global state. TanStack Query for server state.
-- **Backend Stack:** Django 5 + Django REST Framework + SimpleJWT for auth.
-- **Database:** PostgreSQL (local)
-- **AI:** Anthropic Claude API via Celery async tasks
-- **Drag & Drop:** React Beautiful DnD for Kanban and backlog
-- **Charts:** Recharts for velocity/burndown charts
-- **Auth:** JWT (access + refresh tokens) via SimpleJWT
-- **Async Tasks:** Celery + Redis for AI processing
-- **Notifications:** In-app polling (no WebSockets in v1)
-- **Design:** Dark mode "command center" aesthetic. No purple/violet.
-
-### User Stories Catalog (from captures)
-
-| ID | Title | Module | Priority |
-|----|-------|--------|----------|
-| HU-01 | Registro con correo y contraseña | Autenticación | Alta |
-| HU-02 | Inicio de sesión con credenciales | Autenticación | Alta |
-| HU-03 | Recuperación de contraseña por correo | Autenticación | Alta |
-| HU-04 | Editar perfil de usuario | Autenticación | Media |
-| HU-05 | Gestionar roles del equipo | Autenticación | Media |
-| HU-06 | Crear nuevo proyecto | Proyectos | Alta |
-| HU-07 | Invitar miembros al proyecto | Proyectos | Alta |
-| HU-08 | Ver listado de proyectos en dashboard | Proyectos | Alta |
-| HU-09 | Editar información del proyecto | Proyectos | Media |
-| HU-10 | Archivar proyecto finalizado | Proyectos | Baja |
-| HU-11 | Crear ítems en el backlog manualmente | Backlog | Alta |
-| HU-12 | Crear sprints y asignar ítems | Backlog | Alta |
-| HU-13 | Priorizar ítems del backlog | Backlog | Alta |
-| HU-14 | Filtrar el backlog | Backlog | Media |
-| HU-15 | Finalizar sprint y mover ítems | Backlog | Media |
-| HU-16 | Agregar estimaciones (story points) | Backlog | Baja |
-| HU-17 | Ver tablero Kanban del sprint activo | Kanban | Alta |
-| HU-18 | Mover tarjetas entre columnas | Kanban | Alta |
-| HU-19 | Ver detalle de tarea desde tablero | Kanban | Alta |
-| HU-20 | Personalizar columnas del tablero | Kanban | Media |
-| HU-21 | Filtrar tarjetas del tablero | Kanban | Baja |
-| HU-22 | Generar historias de usuario con IA | Agente IA | Alta |
-| HU-23 | Generar backlog inicial automáticamente | Agente IA | Alta |
-| HU-24 | Recibir recomendaciones del agente | Agente IA | Alta |
-| HU-25 | Chat con el agente dentro del proyecto | Agente IA | Media |
-| HU-26 | Sugerencia de priorización del backlog | Agente IA | Media |
-| HU-27 | Resumen ejecutivo del sprint con IA | Agente IA | Baja |
-| HU-28 | Notificación al ser asignado a una tarea | Notificaciones | Media |
-| HU-29 | Alerta de sprint próximo a vencer | Notificaciones | Media |
-| HU-30 | Configurar preferencias de notificaciones | Notificaciones | Baja |
-| HU-31 | Reporte de velocidad del equipo | Reportes | Media |
-| HU-32 | Burndown chart del sprint activo | Reportes | Media |
-| HU-33 | Exportar backlog a CSV | Reportes | Baja |
-
-### Pending Todos / Next Steps
-
-- Begin Phase 1 implementation
-- Scaffold React + Vite frontend project
-- Scaffold Django + DRF backend project
-- Design and deploy PostgreSQL schema
-- Implement JWT authentication end-to-end
+- **Frontend Stack:** React 19 + Vite 8 + Tailwind CSS 4 + TypeScript 6. Zustand 5. TanStack Query 5.
+- **Backend Stack:** Django 5.1 + DRF + SimpleJWT (blacklist + rotación).
+- **Database:** SQLite por defecto (fallback cuando no hay DB_HOST). PostgreSQL opcional.
+- **AI:** Google Gemma 4 vía `google-generativeai`. Fallback a mock sin API key.
+- **Async:** Llamadas IA síncronas. `threading.Thread` solo para orquestación de épicas. NO hay Celery/Redis.
+- **Drag & Drop:** @hello-pangea/dnd (fork de react-beautiful-dnd).
+- **Charts:** Recharts 3.
+- **Realtime:** SSE para notificaciones. Supabase realtime desactivado (código comentado).
+- **Design:** "Tactical Midnight" — dark bg #020617, cyan #22d3ee, zero border-radius, JetBrains Mono.
 
 ### Blockers/Concerns
 
-- Anthropic Claude API: need API key (free tier or credits for academic use)
-- PostgreSQL: must be installed locally
-- Redis: needed for Celery workers (Phase 5)
-- CORS configuration between React (5173) and Django (8000)
-- Email sending for password reset: may use console backend for dev
+- `google-generativeai` falta en requirements.txt — instalar manualmente
+- `psycopg2-binary` comentado — solo si se usa PostgreSQL
+- Email backend es console-only — los links de reset van a la consola del servidor
+- CORS hardcodeado a `localhost:5173` por defecto
+- Hay cambios sin commitear que deben revisarse y commitearse
 
 ## Session Continuity
 
-Last session: 2026-04-20
-Stopped at: Planning documentation complete. Ready for Phase 1 execution.
+Last session: 2026-08-11
+Stopped at: Auditoría completa. ROADMAP actualizado con fases de finalización. Listo para ejecutar Phase 8 (Completion).

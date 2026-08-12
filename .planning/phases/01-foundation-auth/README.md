@@ -1,15 +1,20 @@
 # Phase 1: Foundation & Auth
 
-**Status:** 🔲 Next
-**Plans:** 0/4 completed
+**Status:** ✅ Done (backend) / ⚠️ 90% (frontend — falta UI de perfil)
+**Plans:** 4/4 effectively completed
 **Requirements:** AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, UIX-02
 **User Stories:** HU-01, HU-02, HU-03, HU-04, HU-05
 
 ## Goal
 Developer puede ejecutar frontend y backend localmente, autenticación funciona end-to-end, layout responsive base se renderiza.
 
-## Plans
-- [ ] 01-01-PLAN.md — React scaffold (Vite + Tailwind + TypeScript), estructura de carpetas, design tokens, layout shell
-- [ ] 01-02-PLAN.md — Django scaffold (DRF + SimpleJWT), modelos de datos, serializers, migraciones
-- [ ] 01-03-PLAN.md — Auth endpoints (register, login, refresh, reset password), frontend auth pages
-- [ ] 01-04-PLAN.md — Perfil de usuario, gestión de roles, seed data
+## Reality (verified 2026-08-11)
+- [x] React scaffold (Vite + Tailwind + TypeScript), layout shell, design tokens
+- [x] Django scaffold (DRF + SimpleJWT), modelos, migraciones
+- [x] Auth endpoints: register, login (rate-limited), refresh, password reset. Frontend auth pages.
+- [x] JWT blacklist + rotación activos
+- [ ] Perfil de usuario (editar nombre, avatar, bio) — movido a Phase 8 (08-03)
+
+## Notes
+- AUTH-01 email verification NO implementado (descopeado a v2)
+- Avatar es solo URLField, sin upload (descopeado a v2)

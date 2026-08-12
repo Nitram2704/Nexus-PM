@@ -16,52 +16,57 @@ Un Product Owner describe en lenguaje natural los requisitos de un proyecto y el
 
 ### Active
 
+> Estado real verificado 2026-08-11. ✅ = implementado, ⚠️ = parcial, ❌ = falta.
+
 **Autenticación & Usuarios**
-- [ ] Registro de usuarios con correo y contraseña
-- [ ] Inicio de sesión con credenciales
-- [ ] Recuperación de contraseña por correo
-- [ ] Editar perfil de usuario
-- [ ] Gestionar roles del equipo (Admin, Developer, Viewer)
+- [x] Registro de usuarios con correo y contraseña
+- [x] Inicio de sesión con credenciales (con rate limiting)
+- [x] Recuperación de contraseña por correo (console backend)
+- [ ] Editar perfil de usuario ❌ (sin UI)
+- [x] Gestionar roles del equipo (Owner, Admin, Developer, Viewer)
 
 **Gestión de Proyectos**
-- [ ] Crear nuevo proyecto con nombre, descripción y equipo
-- [ ] Invitar miembros al proyecto vía email
-- [ ] Ver listado de proyectos en un dashboard
-- [ ] Editar información del proyecto
-- [ ] Archivar proyecto finalizado
+- [x] Crear nuevo proyecto (API ✅, sin UI ❌)
+- [ ] Invitar miembros al proyecto (API ✅, sin UI ❌)
+- [ ] Ver listado de proyectos en un dashboard ⚠️ (solo mini-cards en dashboard personal)
+- [ ] Editar información del proyecto (API ✅, sin UI ❌)
+- [ ] Archivar proyecto finalizado (API ✅, sin UI ❌)
 
 **Backlog & Sprints**
-- [ ] Crear ítems en el backlog manualmente
-- [ ] Crear sprints y asignar ítems del backlog
-- [ ] Priorizar ítems del backlog (drag & drop)
-- [ ] Filtrar ítems del backlog por etiquetas/prioridad
-- [ ] Finalizar sprint y mover ítems incompletos
-- [ ] Agregar estimaciones (story points)
+- [x] Crear ítems en el backlog manualmente
+- [x] Crear sprints y asignar ítems del backlog
+- [x] Priorizar ítems del backlog (drag & drop + priorización IA)
+- [ ] Filtrar ítems del backlog por etiquetas/prioridad ⚠️ (filtros básicos, sin etiquetas/tags)
+- [x] Finalizar sprint y mover ítems incompletos
+- [x] Agregar estimaciones (story points)
 
 **Tablero Kanban**
-- [ ] Ver tablero Kanban del sprint activo
-- [ ] Mover tarjetas entre columnas (drag & drop)
-- [ ] Ver detalle de tarea desde el tablero
-- [ ] Personalizar columnas del tablero
-- [ ] Filtrar tarjetas del tablero
+- [x] Ver tablero Kanban del sprint activo
+- [x] Mover tarjetas entre columnas (drag & drop)
+- [x] Ver detalle de tarea desde el tablero (drawer lateral)
+- [x] Personalizar columnas del tablero (crear, renombrar, reordenar, eliminar)
+- [x] Filtrar tarjetas del tablero (texto + "mis tareas")
 
 **Agente IA (Scrum Master)**
-- [ ] Generar historias de usuario con IA desde texto libre
-- [ ] Generar backlog inicial automáticamente
-- [ ] Recibir recomendaciones contextuales del agente
-- [ ] Chat con el agente dentro del proyecto
-- [ ] Sugerencia de priorización del backlog
-- [ ] Resumen ejecutivo del sprint con IA
+- [x] Generar historias de usuario con IA desde texto libre
+- [x] Generar backlog inicial automáticamente
+- [x] Recibir recomendaciones contextuales del agente
+- [x] Chat con el agente dentro del proyecto (+ chat global)
+- [x] Sugerencia de priorización del backlog
+- [x] Resumen ejecutivo del sprint con IA
+- [x] Extras: Foresight, simulaciones, orquestación de agentes, acciones propuestas (human-in-the-loop)
 
 **Notificaciones**
-- [ ] Notificación al ser asignado a una tarea
-- [ ] Alerta de sprint próximo a vencer
-- [ ] Configurar preferencias de notificaciones
+- [x] Notificación al ser asignado a una tarea
+- [x] Alerta de sprint próximo a vencer (management command)
+- [x] Configurar preferencias de notificaciones (SettingsModal)
+- [x] Stream SSE de notificaciones en tiempo real
 
 **Reportes**
-- [ ] Reporte de velocidad del equipo
-- [ ] Burndown chart del sprint activo
-- [ ] Exportar backlog a CSV
+- [x] Reporte de velocidad del equipo (VelocityReport)
+- [x] Burndown chart del sprint activo (BurndownChart)
+- [ ] Exportar backlog a CSV ❌ (sin backend ni frontend)
+- [x] Dashboard de métricas (InsightsPage con analytics HUD)
 
 ### Out of Scope (MVP)
 
@@ -77,17 +82,18 @@ Un Product Owner describe en lenguaje natural los requisitos de un proyecto y el
 
 ## Context
 
-- **Architecture:** React (Vite) SPA + Django REST Framework API. PostgreSQL database.
-- **AI Agent:** Anthropic Claude API para generación de historias de usuario, recomendaciones y chat contextual.
-- **State Management:** Zustand para estado global del frontend, TanStack Query para server state.
-- **Drag & Drop:** React Beautiful DnD para tablero Kanban y backlog.
-- **Async Tasks:** Celery + Redis para tareas de IA (generación de backlogs, resúmenes).
-- **Data Model:** Users, Projects, Members, Sprints, Tasks (backlog items), Columns, Comments, AIConversations, Notifications.
+- **Architecture:** React 19 (Vite 8) SPA + Django 5.1 REST Framework API. SQLite por defecto (fallback), PostgreSQL opcional.
+- **AI Agent:** Google Gemma 4 (`google-generativeai`) para generación de historias, backlog, recomendaciones, chat, foresight y simulaciones. Fallback a mock data sin API key.
+- **State Management:** Zustand 5 para estado global del frontend, TanStack Query 5 para server state.
+- **Drag & Drop:** @hello-pangea/dnd (fork mantenido de react-beautiful-dnd) para Kanban y backlog.
+- **Async Tasks:** Llamadas IA síncronas en el request. Solo orquestación de épicas usa `threading.Thread` (no hay Celery/Redis).
+- **Realtime:** SSE (Server-Sent Events) para notificaciones vía `NotificationStreamView`. Supabase integrado en cliente pero el realtime está desactivado (código comentado en KanbanPage).
+- **Data Model:** Users, Projects, Members, Sprints, Tasks, Columns, Comments, AIProposals, AIConversations, AIMessages, ProposedActions, AIRecommendations, Notifications, NotificationSettings, ProjectMetricSnapshots, LoginAttempts.
 - **Presentation:** El MVP targets una demo de gestión de proyectos ágil con IA integrada.
 
 ## Constraints
 
-- **Cost:** $0 en infraestructura — PostgreSQL local, Redis local, Anthropic API con free tier o créditos
+- **Cost:** $0 en infraestructura — SQLite local, Google AI con free tier o créditos
 - **Time:** Proyecto académico — MVP scope only
 - **Platform:** Windows dev machine, cualquier navegador moderno
 - **Stack:** React + Vite (frontend) + Django + DRF (backend). Separación clara front/back.
@@ -97,17 +103,18 @@ Un Product Owner describe en lenguaje natural los requisitos de un proyecto y el
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| React + Vite sobre Next.js | Separación limpia frontend/backend. Django maneja todo el server-side. | ✅ Decided |
-| Django + DRF como backend | Battle-tested, ORM potente, auth built-in, admin panel gratis | ✅ Decided |
-| Anthropic Claude como IA | Superior en generación de texto estructurado, pricing competitivo | ✅ Decided |
-| Celery + Redis para async | Las llamadas a IA son lentas (2-5s), no pueden bloquear la API | ✅ Decided |
-| PostgreSQL sobre SQLite | Relaciones complejas, full-text search, concurrencia | ✅ Decided |
-| Zustand sobre Redux | Menor boilerplate, API más simple, suficiente para este MVP | ✅ Decided |
-| TanStack Query para server state | Cache automático, refetch, mutations — ideal para SPA con API REST | ✅ Decided |
-| React Beautiful DnD | Solución madura para drag & drop, accesibilidad incluida | ✅ Decided |
-| Tailwind CSS para estilos | Rapid prototyping, consistencia, dark mode built-in | ✅ Decided |
-| JWT Auth (SimpleJWT) | Stateless, se integra bien con React SPA | Pending |
-| No WebSockets en v1 | Polling para notificaciones es suficiente para el MVP | Pending |
+| React + Vite sobre Next.js | Separación limpia frontend/backend. Django maneja todo el server-side. | ✅ Implementado |
+| Django + DRF como backend | Battle-tested, ORM potente, auth built-in, admin panel gratis | ✅ Implementado |
+| Google Gemma 4 como IA | ~~Anthropic Claude~~ — se cambió a Gemma 4 durante implementación | ✅ Implementado |
+| Llamadas IA síncronas + threading | ~~Celery + Redis~~ — simplificado: sync en request, thread solo para orquestación | ✅ Implementado |
+| SQLite con fallback desde PostgreSQL | ~~PostgreSQL obligatorio~~ — SQLite por defecto para dev sin setup | ✅ Implementado |
+| Zustand sobre Redux | Menor boilerplate, API más simple, suficiente para este MVP | ✅ Implementado |
+| TanStack Query para server state | Cache automático, refetch, mutations — ideal para SPA con API REST | ✅ Implementado |
+| @hello-pangea/dnd | ~~React Beautiful DnD~~ (deprecado) — fork mantenido con misma API | ✅ Implementado |
+| Tailwind CSS 4 para estilos | Rapid prototyping, consistencia, dark mode built-in | ✅ Implementado |
+| JWT Auth (SimpleJWT) | Stateless, se integra bien con React SPA. Blacklist + rotación activos | ✅ Implementado |
+| SSE sobre WebSockets | ~~Polling~~ — se implementó SSE para notificaciones en tiempo real | ✅ Implementado |
+| Supabase (auth/realtime complementario) | Añadido durante implementación. Realtime actualmente desactivado | ⚠️ Parcial |
 
 ---
-*Last updated: 2026-04-20 after brainstorming*
+*Last updated: 2026-08-11 — reconciliado con el estado real del código*

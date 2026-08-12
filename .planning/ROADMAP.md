@@ -1,210 +1,134 @@
 # Roadmap: Nexus-PM
 
+> **Reconciled 2026-08-11** — este roadmap refleja el estado REAL del código, no el plan original de 2026-04-20.
+
 ## Overview
 
-Nexus-PM se construye como un MVP de capas incrementales: primero la infraestructura base (scaffold, DB, auth), luego la gestión de proyectos y equipos, después el sistema de backlog y sprints, el tablero Kanban interactivo, el agente IA integrado, las notificaciones, y finalmente los reportes y polish final. Cada fase entrega funcionalidad independientemente testeable.
-
-La fase 5 (Agente IA) es el **diferenciador clave** — el "wow factor" que separa a Nexus-PM de cualquier clon de Jira.
+El proyecto está ~80% completo. El backend está prácticamente terminado (5 apps funcionales).
+El frontend tiene todas las páginas principales pero le falta la UI de gestión de proyectos
+(crear/editar/archivar/invitar miembros) y el export CSV. Las fases restantes son:
+**Completion** (cerrar gaps de UI), **Stabilization** (tests, deps, lint), y **Delivery** (CI/CD, deploy, demo).
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3...): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [ ] **Phase 1: Foundation & Auth** — Scaffold frontend (React+Vite) y backend (Django+DRF), DB schema, JWT auth, responsive shell
-- [ ] **Phase 2: Project Management** — CRUD de proyectos, invitaciones, miembros, roles, dashboard de proyectos
-- [ ] **Phase 3: Backlog & Sprints** — Ítems de backlog CRUD, sprints, asignaciones, estimaciones, drag & drop priorización
-- [ ] **Phase 4: Kanban Board** — Tablero interactivo, drag & drop entre columnas, detalle de tarea, columnas configurables, dark theme
-- [ ] **Phase 5: AI Agent (Scrum Master)** — Generación de historias, backlog automático, recomendaciones, chat contextual, priorización
-- [ ] **Phase 6: Notifications** — Sistema de notificaciones in-app, alertas de sprint, preferencias
-- [ ] **Phase 7: Reports & Demo Polish** — Velocity chart, burndown, export CSV, dashboard de proyecto, polish final
-
-## Phase Details
-
-### Phase 1: Foundation & Auth
-**Goal**: Developer puede ejecutar frontend y backend localmente, autenticación funciona end-to-end, layout responsive base se renderiza
-**Depends on**: Nothing (first phase)
-**Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, UIX-02
-**Success Criteria** (what must be TRUE):
-  1. `npm run dev` inicia el frontend React en `localhost:5173` sin errores
-  2. `python manage.py runserver` inicia Django en `localhost:8000` sin errores
-  3. PostgreSQL tiene las tablas: users, projects, members, sprints, tasks, columns, comments, notifications
-  4. Un usuario puede registrarse, hacer login y obtener un JWT token
-  5. El token permite acceder a endpoints protegidos
-  6. Layout base renderiza con sidebar (desktop) y bottom nav (mobile)
-  7. Las variables de entorno están cargadas desde `.env` (Django) y `.env.local` (React)
-  8. CORS está configurado para permitir requests del frontend
-**Plans**: 4 plans
-
-Plans:
-- [ ] 01-01-PLAN.md — React scaffold (Vite + Tailwind + TypeScript), estructura de carpetas, design tokens, layout shell
-- [ ] 01-02-PLAN.md — Django scaffold (DRF + SimpleJWT), modelos de datos, serializers, migraciones
-- [ ] 01-03-PLAN.md — Auth endpoints (register, login, refresh, reset password), frontend auth pages (Login, Register, Forgot Password)
-- [ ] 01-04-PLAN.md — Perfil de usuario (editar nombre, avatar upload), gestión de roles, seed data
+- [x] **Phase 1: Foundation & Auth** — ✅ Backend 100%, Frontend 90% (falta UI de perfil)
+- [x] **Phase 2: Project Management** — ✅ Backend 100%, ❌ Frontend 30% (falta UI CRUD)
+- [x] **Phase 3: Backlog & Sprints** — ✅ Backend 100%, Frontend 90%
+- [x] **Phase 4: Kanban Board** — ✅ Backend 100%, Frontend 95%
+- [x] **Phase 5: AI Agent** — ✅ 100% + extras (foresight, simulaciones, orquestación)
+- [x] **Phase 6: Notifications** — ✅ 100% (SSE incluido)
+- [ ] **Phase 7: Reports & Polish** — ⚠️ 75% (falta CSV export, empty states)
+- [ ] **Phase 8: Completion & Gap Closing** — ❌Nuevo: UI de proyectos, perfil, CSV
+- [ ] **Phase 9: Stabilization** — ❌ Nuevo: deps, tests, lint, .env.example
+- [ ] **Phase 10: Delivery & Demo** — ❌ Nuevo: CI/CD, deploy, seed data, demo prep
 
 ---
 
-### Phase 2: Project Management
-**Goal**: Un usuario puede crear proyectos, invitar miembros, ver un dashboard con todos sus proyectos, y gestionar la información del proyecto
-**Depends on**: Phase 1
-**Requirements**: PRJ-01, PRJ-02, PRJ-03, PRJ-04, PRJ-05, PRJ-06
-**Success Criteria** (what must be TRUE):
-  1. "Nuevo Proyecto" abre un formulario modal/página. Crear genera la clave automáticamente (ej: "Nexus" → "NEX")
-  2. El creador se asigna como Owner del proyecto automáticamente
-  3. Se pueden invitar miembros por email con rol por defecto Developer
-  4. Dashboard muestra grid de proyectos con nombre, clave, miembros, tareas pendientes, última actividad
-  5. Solo Owner y Admin pueden editar proyecto
-  6. Archivar proyecto lo oculta del dashboard (soft delete con restore)
-  7. Vista de miembros muestra avatar, nombre, rol, con capacidad de cambiar roles (Admin)
-**Plans**: 3 plans
+### Phase 7: Reports & Demo Polish (remanente)
+**Goal**: Completar lo que falta del plan original de reportes.
+**Status**: Parcialmente done — velocity, burndown y AI summary ya existen.
 
-Plans:
-- [ ] 02-01-PLAN.md — API de proyectos (CRUD), modelo Project, serializers, auto-generación de clave, permisos por rol
-- [ ] 02-02-PLAN.md — Frontend: dashboard de proyectos (grid/list), crear/editar proyecto, archivar/restaurar
-- [ ] 02-03-PLAN.md — Sistema de invitaciones (email), gestión de miembros, roles, vista de equipo
+**Remaining:**
+- [ ] **RPT-03**: Exportar backlog a CSV (backend endpoint + botón frontend)
+- [ ] **UIX-04**: Empty states diseñados para vistas vacías
+- [ ] **UIX-05**: Loading skeletons consistentes en todas las vistas
 
 ---
 
-### Phase 3: Backlog & Sprints
-**Goal**: El equipo puede crear ítems de backlog, organizarlos, crear sprints, asignar tareas y estimar con story points
-**Depends on**: Phase 1, Phase 2
-**Requirements**: BKL-01 through BKL-09
-**Success Criteria** (what must be TRUE):
-  1. Crear ítem de backlog con todos los campos: título, descripción (Markdown), tipo, prioridad, etiquetas, asignado, story points
-  2. Backlog muestra lista ordenable con drag & drop (React Beautiful DnD). Orden persiste.
-  3. Filtros funcionan: por tipo, prioridad, asignado, etiqueta, texto libre
-  4. Crear sprint con nombre auto-incrementado, fechas, objetivo
-  5. Solo 1 sprint activo por proyecto a la vez
-  6. Drag & drop de ítems del backlog al sprint planning
-  7. Finalizar sprint: ítems "Hecho" se archivan, incompletos se reubican
-  8. Story points visibles en sprint planning (total asignado vs capacidad)
-  9. Editar ítem muestra historial de cambios y permite comentarios
-**Plans**: 4 plans
+### Phase 8: Completion & Gap Closing
+**Goal**: Cerrar los gaps de UI que bloquean la demo. El usuario debe poder usar la app de principio a fin sin tocar la API directamente.
+**Depends on**: Phase 2 backend (ya existe)
+**Priority**: 🔴 CRÍTICO — sin esto la app no es usable end-to-end
 
-Plans:
-- [ ] 03-01-PLAN.md — API de backlog: modelo Task completo (tipo, prioridad, etiquetas, story points), CRUD endpoints, ordenamieto
-- [ ] 03-02-PLAN.md — Frontend backlog: vista de lista, crear/editar ítem modal, Markdown preview, filtros avanzados
-- [ ] 03-03-PLAN.md — API de sprints: modelo Sprint (fechas, objetivo, estado), crear/finalizar sprint, asignar ítems
-- [ ] 03-04-PLAN.md — Frontend sprints: sprint planning board, drag & drop backlog→sprint, capacidad, historial de cambios, comentarios
+**Plans:**
+- [ ] **08-01-PLAN.md** — UI de gestión de proyectos: página de listado de proyectos (grid), modal de creación, edición, archivado. Rutas en App.tsx.
+- [ ] **08-02-PLAN.md** — UI de miembros: invitar miembros por email, vista de equipo, cambio de roles, remover miembros.
+- [ ] **08-03-PLAN.md** — UI de perfil de usuario: editar nombre, bio, avatar. Página de settings.
+- [ ] **08-04-PLAN.md** — Export CSV: endpoint backend `GET /projects/<id>/export-csv/` + botón en BacklogPage.
+
+**Success Criteria:**
+1. Un usuario nuevo puede registrarse, crear un proyecto, invitar miembros y generar un backlog con IA sin salir de la UI
+2. El dashboard muestra todos los proyectos del usuario con acciones (abrir, editar, archivar)
+3. El backlog se puede exportar a CSV con un click
+4. El perfil de usuario se puede editar
 
 ---
 
-### Phase 4: Kanban Board
-**Goal**: Tablero Kanban interactivo con drag & drop, detalle de tarea inline, columnas personalizables. UI dark mode premium.
-**Depends on**: Phase 1, Phase 3
-**Requirements**: KBN-01 through KBN-06, UIX-01, UIX-03
-**Success Criteria** (what must be TRUE):
-  1. Tablero muestra columnas del sprint activo con tarjetas
-  2. Drag & drop de tarjetas entre columnas actualiza estado en la BD
-  3. Click en tarjeta abre panel lateral/modal con detalle completo sin salir del tablero
-  4. Se pueden agregar, renombrar, reordenar y eliminar columnas
-  5. Límite WIP por columna — se resalta visualmente cuando se excede
-  6. Filtros: por asignado, tipo, prioridad, etiqueta. Búsqueda rápida.
-  7. Dark mode "command center" aplicado en toda la UI
-  8. Animaciones suaves: drag, entrada stagger, transiciones, loading skeletons
-**Plans**: 3 plans
+### Phase 9: Stabilization
+**Goal**: Hacer el proyecto instalable, testeable y libre de errores.
+**Depends on**: Phase 8
+**Priority**: 🟡 ALTO
 
-Plans:
-- [ ] 04-01-PLAN.md — API de columnas: CRUD, reordenamiento, límite WIP. API de tareas: actualizar estado vía drag
-- [ ] 04-02-PLAN.md — Frontend Kanban board: columnas, tarjetas, React Beautiful DnD, panel lateral de detalle
-- [ ] 04-03-PLAN.md — Dark mode theme, glassmorphism, micro-animations, responsive polish, loading & empty states
+**Plans:**
+- [ ] **09-01-PLAN.md** — Fix dependencies: agregar `google-generativeai` a requirements.txt, verificar `pip install -r requirements.txt` en fresh venv
+- [ ] **09-02-PLAN.md** — Tests: expandir suite backend (auth, projects, tasks, intelligence), agregar tests básicos de frontend (Vitest)
+- [ ] **09-03-PLAN.md** — Lint & typecheck: `npm run lint` y `npm run build` sin errores en frontend, `python manage.py check` sin warnings
+- [ ] **09-04-PLAN.md** — Environment: crear `.env.example` para backend y frontend, documentar setup en README
+- [ ] **09-05-PLAN.md** — Commit hygiene: revisar y commitear cambios pendientes (notifications, tasks signals, Navbar, SettingsModal)
+
+**Success Criteria:**
+1. `pip install -r requirements.txt && python manage.py migrate && python manage.py runserver` funciona desde cero
+2. `npm install && npm run build` compila sin errores
+3. `python manage.py test` pasa con >60% de cobertura en lógica core
+4. No hay cambios sin commitear
 
 ---
 
-### Phase 5: AI Agent (Scrum Master)
-**Goal**: El agente IA genera historias de usuario, estructura backlogs, da recomendaciones contextuales y responde preguntas en un chat integrado
-**Depends on**: Phase 3
-**Requirements**: AIA-01 through AIA-06
-**Success Criteria** (what must be TRUE):
-  1. El usuario escribe un párrafo y el agente genera 3-5 historias de usuario formateadas
-  2. Al crear un proyecto, el usuario puede describir el producto y el agente genera un backlog de 10-20 ítems
-  3. Panel de recomendaciones muestra insights contextuales del sprint (progreso, bloqueos, carga)
-  4. Chat funcional dentro del proyecto — el agente responde con contexto del backlog y sprint
-  5. El agente sugiere un reorden de prioridades del backlog con justificación
-  6. Al finalizar sprint, se genera resumen ejecutivo automático con métricas y recomendaciones
-  7. Las llamadas a IA se procesan async vía Celery sin bloquear la API
-  8. Rate limiting: max 10 llamadas IA por usuario por hora
-**Plans**: 4 plans
+### Phase 10: Delivery & Demo
+**Goal**: Preparar la aplicación para la presentación académica de 20 minutos.
+**Depends on**: Phase 9
+**Priority**: 🟢 NORMAL
 
-Plans:
-- [ ] 05-01-PLAN.md — Celery + Redis setup, Anthropic Claude client, prompt templates, task queue para IA
-- [ ] 05-02-PLAN.md — API de generación: endpoint para historias de usuario, generación de backlog, priorización automática
-- [ ] 05-03-PLAN.md — Chat contextual: modelo AIConversation, endpoint de chat, contexto del proyecto inyectado al prompt
-- [ ] 05-04-PLAN.md — Frontend IA: panel de historias generadas (aprobar/editar/descartar), chat widget, panel de recomendaciones
+**Plans:**
+- [ ] **10-01-PLAN.md** — Seed data: comando `python manage.py seed_demo` que crea usuario demo, proyecto con backlog, sprint activo y tareas en el kanban
+- [ ] **10-02-PLAN.md** — CI/CD: GitHub Actions workflow (lint + typecheck + tests en PR)
+- [ ] **10-03-PLAN.md** — Deploy: configurar deploy en Vercel (frontend) + Render/Railway (backend) o alternativa local
+- [ ] **10-04-PLAN.md** — Demo prep: script de la demo de 20 min, flujo happy-path verificado, fallbacks para AI sin API key
 
----
-
-### Phase 6: Notifications
-**Goal**: Los usuarios reciben notificaciones in-app para eventos relevantes y pueden configurar sus preferencias
-**Depends on**: Phase 1, Phase 3
-**Requirements**: NTF-01 through NTF-04
-**Success Criteria** (what must be TRUE):
-  1. Bell icon en el header muestra badge con contador de notificaciones no leídas
-  2. Dropdown/panel muestra lista de notificaciones con ícono, mensaje, timestamp, leída/no leída
-  3. Notificación automática al ser asignado a una tarea
-  4. Alerta cuando un sprint está a 2 días de vencer con tareas incompletas
-  5. Notificación cuando el agente IA genera recomendaciones
-  6. Settings del usuario tiene toggles por tipo de notificación
-**Plans**: 2 plans
-
-Plans:
-- [ ] 06-01-PLAN.md — API de notificaciones: modelo Notification, triggers automáticos, endpoints (list, mark read, preferences)
-- [ ] 06-02-PLAN.md — Frontend notificaciones: bell icon + dropdown, notification list, settings panel, polling
-
----
-
-### Phase 7: Reports & Demo Polish
-**Goal**: Dashboard de métricas del proyecto, charts de velocity y burndown, exportación, polish final para la demo
-**Depends on**: Phase 3, Phase 4
-**Requirements**: RPT-01 through RPT-04, UIX-04, UIX-05, UIX-06
-**Success Criteria** (what must be TRUE):
-  1. Velocity chart muestra story points completados por sprint (últimos 5)
-  2. Burndown chart muestra progreso del sprint activo (ideal vs real)
-  3. Exportar backlog genera un CSV descargable
-  4. Dashboard de proyecto muestra KPIs resumen
-  5. Empty states diseñados para cada vista vacía
-  6. Toast notifications para todas las acciones (éxito/error)
-  7. Loading skeletons en todas las vistas de datos
-  8. La aplicación es demo-ready: flujo completo sin errores
-**Plans**: 3 plans
-
-Plans:
-- [ ] 07-01-PLAN.md — API de reportes: endpoints para velocity, burndown, KPIs, exportación CSV
-- [ ] 07-02-PLAN.md — Frontend reportes: velocity chart (Recharts), burndown chart, dashboard KPIs, export button
-- [ ] 07-03-PLAN.md — Demo polish: empty states, toast system, error boundaries, final responsive testing, seed data de demo
+**Success Criteria:**
+1. La app corre con un solo comando o está deployada en una URL pública
+2. Hay un usuario demo con datos precargados
+3. CI pasa en verde
+4. El flujo de demo (registro → crear proyecto → generar backlog con IA → kanban → insights) funciona sin errores
 
 ---
 
 ## Progress
 
-**Execution Order:**
-Phases are mostly sequential, with some parallelization possible.
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1. Foundation & Auth | ✅ Done | Falta UI de perfil (movido a Phase 8) |
+| 2. Project Management | ⚠️ Backend done | Frontend UI movido a Phase 8 |
+| 3. Backlog & Sprints | ✅ Done | Tags/historial descopeados a v2 |
+| 4. Kanban Board | ✅ Done | WIP limits descopeados a v2 |
+| 5. AI Agent | ✅ Done+ | Foresight, simulaciones, orquestación |
+| 6. Notifications | ✅ Done | SSE incluido |
+| 7. Reports & Polish | ⚠️ 75% | CSV export pendiente |
+| 8. Completion | 🔲 Next | **Prioridad crítica** |
+| 9. Stabilization | ⏳ Waiting | |
+| 10. Delivery & Demo | ⏳ Waiting | |
+
+## Execution Order
 
 ```
-Phase 1 (Foundation + Auth)
-    └──▶ Phase 2 (Projects)
-              └──▶ Phase 3 (Backlog & Sprints)
-                        ├──▶ Phase 4 (Kanban Board)
-                        ├──▶ Phase 5 (AI Agent)
-                        └──▶ Phase 6 (Notifications)
-                                  └──▶ Phase 7 (Reports & Demo)
+Phase 7 remanente (CSV export)
+    └──▶ Phase 8 (Completion: UI proyectos, miembros, perfil)
+              └──▶ Phase 9 (Stabilization: deps, tests, lint)
+                        └──▶ Phase 10 (Delivery: seed, CI/CD, deploy, demo)
 ```
 
-**Note:** Phases 4, 5, and 6 can be partially parallelized (different domains), but Phase 7 depends on all previous phases.
+**Nota:** Phase 8 es el blocker principal. Sin UI de creación de proyectos,
+un usuario nuevo no puede usar la app sin intervención manual en la API/admin.
 
-| Phase | Plans | Plans Complete | Status | Completed |
-|-------|-------|----------------|--------|-----------|
-| 1. Foundation & Auth | 4 | 0/4 | 🔲 Next | — |
-| 2. Project Management | 3 | 0/3 | ⏳ | — |
-| 3. Backlog & Sprints | 4 | 0/4 | ⏳ | — |
-| 4. Kanban Board | 3 | 0/3 | ⏳ | — |
-| 5. AI Agent (Scrum Master) | 4 | 0/4 | ⏳ | — |
-| 6. Notifications | 2 | 0/2 | ⏳ | — |
-| 7. Reports & Demo Polish | 3 | 0/3 | ⏳ | — |
-| **Total** | **23** | **0/23** | | |
+## Descoped a v2 (verificado que no existen)
+
+| Feature | Requirement | Razón |
+|---------|-------------|-------|
+| Etiquetas/tags en tareas | BKL-01 | No hay campo en el modelo, agregarlo requiere migración + UI |
+| Historial de cambios | BKL-09 | Requiere modelo de auditoría nuevo |
+| Límites WIP | KBN-04 | No hay campo wip_limit en Column |
+| Verificación de email | AUTH-01 | Requiere flujo de email real |
+| Avatar upload | AUTH-04 | Actualmente solo URLField |
 
 ---
-*Roadmap defined: 2026-04-20*
+*Roadmap reconciled: 2026-08-11*
