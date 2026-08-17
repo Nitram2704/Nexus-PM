@@ -1,10 +1,13 @@
 import json
 import os
 import re
+import logging
 from decouple import config
 from google import genai
 from google.genai import types
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 try:
     import groq as groq_sdk
@@ -107,7 +110,7 @@ class BacklogAIClient:
         provider = 'Gemini+Groq' if self.gemini_client and self.groq_client else (
             'Gemini' if self.gemini_client else ('Groq' if self.groq_client else 'MOCK')
         )
-        print(f"[NEXUS] AI Provider: {provider}")
+        logger.info("[NEXUS] AI Provider: %s", provider)
 
     # ── Generadores internos ──────────────────────────────────────────────
 
@@ -153,7 +156,7 @@ class BacklogAIClient:
                 text = self._generate_gemini(prompt, json_mode=json_mode)
                 return text, 'gemini'
             except Exception as e:
-                print(f"[NEXUS] Gemini falló: {e}. Intentando Groq...")
+                logger.warning("Gemini falló: %s. Intentando Groq...", e)
 
         # 2. Fallback a Groq
         if self.groq_client:
@@ -161,7 +164,7 @@ class BacklogAIClient:
                 text = self._generate_groq(prompt, json_mode=json_mode)
                 return text, 'groq'
             except Exception as e:
-                print(f"[NEXUS] Groq también falló: {e}")
+                logger.warning("Groq también falló: %s", e)
 
         # 3. Sin proveedores disponibles
         return None, None
@@ -177,18 +180,19 @@ class BacklogAIClient:
                 text = self._generate_gemini(prompt, json_mode=True)
                 return json.loads(text), 'gemini'
             except Exception as e:
-                print(f"[NEXUS] Gemini JSON falló: {e}. Intentando Groq...")
+                logger.warning("Gemini JSON falló: %s. Intentando Groq...", e)
 
         # Groq con parsing manual
         if self.groq_client:
             try:
                 text = self._generate_groq(prompt, json_mode=False)
+                logger.info("Groq response length: %d", len(text) if text else 0)
                 data = _extract_json(text)
                 if data is not None:
                     return data, 'groq'
-                print(f"[NEXUS] Groq no retornó JSON válido, usando mock")
+                logger.warning("Groq no retornó JSON válido. Response snippet: %s", text[:200] if text else 'None')
             except Exception as e:
-                print(f"[NEXUS] Groq JSON falló: {e}")
+                logger.warning("Groq JSON falló: %s", e)
 
         return None, None
 
@@ -357,11 +361,12 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
 
     def generate_recommendations(self, context):
         """Analiza el contexto del proyecto y sugiere mejoras, riesgos y consejos técnicos."""
+        mock_data = [
+            {"title": "Optimizar Backend", "description": "Se detectan cuellos de botella en la API.", "type": "technical"},
+            {"title": "Riesgo de Deadline", "description": "La velocidad actual pone en riesgo el cierre.", "type": "risk"}
+        ]
         if self.is_mock:
-            return [
-                {"title": "Optimizar Backend", "description": "Se detectan cuellos de botella en la API.", "type": "technical"},
-                {"title": "Riesgo de Deadline", "description": "La velocidad actual pone en riesgo el cierre.", "type": "risk"}
-            ]
+            return mock_data
 
         prompt = f"""
         {SYSTEM_PROMPT}
@@ -376,7 +381,7 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
         data, provider = self._generate_json(prompt)
         if data is not None:
             return data
-        return []
+        return mock_data
 
     # ── Mock data ─────────────────────────────────────────────────────────
 
