@@ -23,7 +23,7 @@ import threading
 class ChatView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]
 
-    def post(self, request, project_id):
+    def post(self, request, project_id=None):
         # Support for global chat or specific project
         project = None
         if project_id != 'global':
