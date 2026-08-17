@@ -202,47 +202,37 @@ class BacklogAIClient:
 
     def _generate_json(self, prompt):
         """
-        Genera y parsea JSON. Intenta Gemini (con json_mode) → Groq (con parsing).
+        Genera y parsea JSON. Intenta Gemini (sin json_mode) → Groq (sin json_mode).
+        Usa _extract_json para parsear la respuesta del texto plano.
         Retorna (data, proveedor).
         """
-        MAX_RETRIES = 2
-
-        # Gemini con json_mode nativo
+        # 1. Gemini (sin json_mode — el extract_json se encarga del parseo)
         if self.gemini_client:
-            for attempt in range(MAX_RETRIES):
-                try:
-                    text = self._generate_gemini(prompt, json_mode=True)
-                    data = json.loads(text)
-                    logger.info("Gemini JSON OK (attempt %d), type=%s", attempt + 1, type(data).__name__)
-                    return data, 'gemini'
-                except json.JSONDecodeError as e:
-                    logger.warning("Gemini JSON parse error (attempt %d): %s", attempt + 1, e)
-                    # Try without json_mode on last attempt
-                    if attempt == MAX_RETRIES - 1:
-                        try:
-                            text = self._generate_gemini(prompt, json_mode=False)
-                            data = _extract_json(text)
-                            if data is not None:
-                                logger.info("Gemini fallback (sin json_mode) OK")
-                                return data, 'gemini'
-                        except Exception as e2:
-                            logger.warning("Gemini fallback also failed: %s", e2)
-                except Exception as e:
-                    logger.warning("Gemini error (attempt %d): %s", attempt + 1, e)
-                    break  # Don't retry on non-parse errors
-
-        # Groq con parsing manual
-        if self.groq_client:
-            for attempt in range(MAX_RETRIES):
-                try:
-                    text = self._generate_groq(prompt, json_mode=False)
-                    logger.info("Groq response length: %d (attempt %d)", len(text) if text else 0, attempt + 1)
+            try:
+                text = self._generate_gemini(prompt, json_mode=False)
+                if text:
+                    logger.info("Gemini respondió (%d chars), extrayendo JSON...", len(text))
                     data = _extract_json(text)
                     if data is not None:
+                        logger.info("Gemini JSON OK, type=%s", type(data).__name__)
+                        return data, 'gemini'
+                    logger.warning("Gemini no retornó JSON válido. Snippet: %s", text[:300])
+            except Exception as e:
+                logger.warning("Gemini error: %s", e)
+
+        # 2. Groq (sin json_mode)
+        if self.groq_client:
+            try:
+                text = self._generate_groq(prompt, json_mode=False)
+                if text:
+                    logger.info("Groq respondió (%d chars), extrayendo JSON...", len(text))
+                    data = _extract_json(text)
+                    if data is not None:
+                        logger.info("Groq JSON OK, type=%s", type(data).__name__)
                         return data, 'groq'
-                    logger.warning("Groq no retornó JSON válido. Snippet: %s", text[:200] if text else 'None')
-                except Exception as e:
-                    logger.warning("Groq error (attempt %d): %s", attempt + 1, e)
+                    logger.warning("Groq no retornó JSON válido. Snippet: %s", text[:300])
+            except Exception as e:
+                logger.warning("Groq error: %s", e)
 
         return None, None
 
