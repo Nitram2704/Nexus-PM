@@ -529,37 +529,55 @@ class AIDiagnosticView(views.APIView):
         from .client import BacklogAIClient
         client = BacklogAIClient()
         
-        # Quick test: try Groq
-        groq_status = "not_configured"
-        groq_error = None
+        results = {}
+        
+        # Test Groq
+        groq_result = {"status": "not_configured", "error": None, "key_len": len(client.groq_key) if client.groq_key else 0}
         if client.groq_client:
             try:
-                text, _ = client._generate("Say 'ok' in one word")
-                if text:
-                    groq_status = "working"
+                response = client.groq_client.chat.completions.create(
+                    model=client.groq_model,
+                    messages=[{'role': 'user', 'content': 'Responde solo con la palabra ok'}],
+                    temperature=0.1,
+                    max_tokens=10,
+                )
+                raw_text = response.choices[0].message.content if response.choices else None
+                finish_reason = response.choices[0].finish_reason if response.choices else 'unknown'
+                groq_result["raw_text"] = repr(raw_text) if raw_text else None
+                groq_result["finish_reason"] = finish_reason
+                groq_result["model"] = client.groq_model
+                groq_result["usage"] = {"prompt": response.usage.prompt_tokens, "completion": response.usage.completion_tokens} if response.usage else None
+                if raw_text and raw_text.strip():
+                    groq_result["status"] = "working"
                 else:
-                    groq_status = "no_response"
+                    groq_result["status"] = "empty_response"
             except Exception as e:
-                groq_status = "error"
-                groq_error = str(e)[:200]
+                groq_result["status"] = "error"
+                groq_result["error"] = str(e)[:300]
+        results["groq"] = groq_result
 
-        # Quick test: try Gemini
-        gemini_status = "not_configured"
-        gemini_error = None
+        # Test Gemini
+        gemini_result = {"status": "not_configured", "error": None, "key_len": len(client.gemini_key) if client.gemini_key else 0}
         if client.gemini_client:
             try:
-                text, _ = client._generate("Say 'ok' in one word")
-                if text:
-                    gemini_status = "working"
+                response = client.gemini_client.models.generate_content(
+                    model=client.gemini_model,
+                    contents="Responde solo con la palabra ok",
+                    config=types.GenerateContentConfig(max_output_tokens=10, temperature=0.1),
+                )
+                raw_text = response.text if response.text else None
+                gemini_result["raw_text"] = repr(raw_text) if raw_text else None
+                gemini_result["model"] = client.gemini_model
+                if raw_text and raw_text.strip():
+                    gemini_result["status"] = "working"
                 else:
-                    gemini_status = "no_response"
+                    gemini_result["status"] = "empty_response"
             except Exception as e:
-                gemini_status = "error"
-                gemini_error = str(e)[:200]
+                gemini_result["status"] = "error"
+                gemini_result["error"] = str(e)[:300]
+        results["gemini"] = gemini_result
 
-        return response.Response({
-            "groq": {"status": groq_status, "error": groq_error, "key_len": len(client.groq_key) if client.groq_key else 0},
-            "gemini": {"status": gemini_status, "error": gemini_error, "key_len": len(client.gemini_key) if client.gemini_key else 0},
-            "is_mock": client.is_mock,
-            "provider": "Groq" if client.groq_client else ("Gemini" if client.gemini_client else "MOCK"),
-        })
+        results["is_mock"] = client.is_mock
+        results["provider"] = "Groq" if client.groq_client else ("Gemini" if client.gemini_client else "MOCK")
+
+        return response.Response(results)
