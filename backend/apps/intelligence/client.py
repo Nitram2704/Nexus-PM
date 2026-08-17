@@ -122,32 +122,25 @@ class BacklogAIClient:
         if self.groq_key and groq_sdk:
             try:
                 self.groq_client = groq_sdk.Groq(api_key=self.groq_key)
-                # Test model availability
-                test_resp = self.groq_client.chat.completions.create(
-                    model=self.groq_model,
-                    messages=[{'role': 'user', 'content': 'ok'}],
-                    max_tokens=5,
-                )
-                logger.info("[NEXUS] Groq model %s confirmed working", self.groq_model)
-            except Exception as e:
-                logger.warning("[NEXUS] Groq model %s failed: %s. Trying alternatives...", self.groq_model, e)
-                # Try alternative models
-                for alt_model in ['llama-3.1-70b-versatile', 'llama3-70b-8192', 'llama3-8b-8192', 'mixtral-8x7b-32768']:
+                # Test model availability with current (non-deprecated) models
+                for test_model in ['llama-3.3-70b-versatile', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant', 'llama3-8b-8192', 'mixtral-8x7b-32768']:
                     try:
                         test_resp = self.groq_client.chat.completions.create(
-                            model=alt_model,
+                            model=test_model,
                             messages=[{'role': 'user', 'content': 'ok'}],
                             max_tokens=5,
                         )
-                        self.groq_model = alt_model
-                        logger.info("[NEXUS] Groq model %s confirmed working", alt_model)
+                        self.groq_model = test_model
+                        logger.info("[NEXUS] Groq model %s confirmed working", test_model)
                         break
-                    except Exception as e2:
-                        logger.warning("[NEXUS] Groq model %s also failed: %s", alt_model, e2)
+                    except Exception as e:
+                        logger.warning("[NEXUS] Groq model %s failed: %s", test_model, str(e)[:100])
                 else:
                     # No models worked - disable Groq
                     self.groq_client = None
                     logger.warning("[NEXUS] No Groq models available, disabling Groq")
+            except Exception as e:
+                logger.warning("[NEXUS] Error configurando Groq: %s", e)
 
         # Gemini (secundario - quota limitada en free tier)
         self.gemini_key = getattr(settings, 'GOOGLE_API_KEY', None) or config('GOOGLE_API_KEY', default=None) or os.environ.get('GOOGLE_API_KEY')

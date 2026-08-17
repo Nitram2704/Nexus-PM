@@ -536,9 +536,10 @@ class AIDiagnosticView(views.APIView):
             results["is_mock"] = client.is_mock
             results["groq_client"] = client.groq_client is not None
             results["gemini_client"] = client.gemini_client is not None
+            results["groq_model"] = client.groq_model
             results["provider"] = "Groq" if client.groq_client else ("Gemini" if client.gemini_client else "MOCK")
             
-            # Test Groq directly
+            # Test Groq directly with the working model
             if client.groq_client:
                 try:
                     groq_response = client.groq_client.chat.completions.create(
@@ -548,10 +549,8 @@ class AIDiagnosticView(views.APIView):
                         max_tokens=10,
                     )
                     raw_text = groq_response.choices[0].message.content if groq_response.choices else None
-                    finish_reason = groq_response.choices[0].finish_reason if groq_response.choices else 'unknown'
                     results["groq_raw"] = repr(raw_text) if raw_text else None
-                    results["groq_finish"] = finish_reason
-                    results["groq_model"] = client.groq_model
+                    results["groq_finish"] = groq_response.choices[0].finish_reason if groq_response.choices else 'unknown'
                     if raw_text and raw_text.strip():
                         results["groq_status"] = "WORKING"
                     else:
@@ -561,8 +560,18 @@ class AIDiagnosticView(views.APIView):
                     results["groq_error"] = str(e)[:500]
             else:
                 results["groq_status"] = "NOT_CONFIGURED"
+                # Try to list available models if we have a key
+                if client.groq_key and groq_sdk:
+                    try:
+                        temp_client = groq_sdk.Groq(api_key=client.groq_key)
+                        models_list = temp_client.models.list()
+                        results["groq_available_models"] = [m.id for m in models_list.data][:10] if hasattr(models_list, 'data') else str(models_list)[:500]
+                    except Exception as e:
+                        results["groq_model_list_error"] = str(e)[:500]
                 
         except Exception as e:
+            import traceback
             results["error"] = str(e)[:500]
+            results["traceback"] = traceback.format_exc()[:500]
             
         return response.Response(results)
