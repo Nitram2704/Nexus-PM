@@ -260,11 +260,12 @@ class BacklogAIClient:
 
     def prioritize_backlog(self, tasks_data):
         """Analiza una lista de tareas y sugiere un orden de prioridad."""
+        default = {
+            "reasoning": "Orden basado en prioridad predefinida.",
+            "ordered_ids": [t['id'] for t in tasks_data]
+        }
         if self.is_mock:
-            return {
-                "reasoning": "Mock: Basado en importancia técnica.",
-                "ordered_ids": [t['id'] for t in tasks_data]
-            }
+            return default
 
         prompt = f"""
         Actúa como un Agile Coach experto. Prioriza las siguientes tareas del backlog:
@@ -276,7 +277,7 @@ class BacklogAIClient:
         data, provider = self._generate_json(prompt)
         if data is not None:
             return data
-        return None
+        return default
 
     def generate_sprint_summary(self, sprint_data, tasks_data):
         """Genera un resumen ejecutivo del sprint en formato Markdown."""
