@@ -20,6 +20,7 @@ from .agents.orchestrator import AgentOrchestrator
 from .foresight import ForesightEngine
 from apps.tasks.models import Task
 from apps.notifications.models import Notification
+from google.genai import types
 import threading
 
 
