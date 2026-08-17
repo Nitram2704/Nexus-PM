@@ -1,9 +1,15 @@
 import json
 import os
+import re
 from decouple import config
 from google import genai
 from google.genai import types
 from django.conf import settings
+
+try:
+    import groq as groq_sdk
+except ImportError:
+    groq_sdk = None
 
 SYSTEM_PROMPT = """
 Eres el NEXUS_COMMAND_CENTER (v3). Tu objetivo es gestionar proyectos Agile con precisión quirúrgica.
@@ -28,24 +34,165 @@ EXEC_ACTION:
 {"action": "...", "params": {...}}
 """
 
+
+def _extract_json(text: str):
+    """Extrae JSON de un texto que puede contener markdown o texto adicional."""
+    if not text:
+        return None
+    # Buscar bloque ```json ... ```
+    match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    # Buscar primer [ o {
+    for start_char, end_char in [('[', ']'), ('{', '}')]:
+        start = text.find(start_char)
+        if start == -1:
+            continue
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == start_char:
+                depth += 1
+            elif text[i] == end_char:
+                depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start:i + 1])
+                except json.JSONDecodeError:
+                    break
+    return None
+
+
 class BacklogAIClient:
     """
-    Cliente para interactuar con la IA (Gemini 2.5 Flash) y gestionar el flujo de trabajo de Nexus-PM.
-    Usa la nueva SDK google.genai v2.
-    """
+    Cliente de IA dual: Gemini (primario) + Groq (fallback).
     
+    Flujo:
+    1. Intenta Gemini → si falla, intenta Groq
+    2. Si ambos fallan, retorna mock/error
+    
+    Configuración:
+    - GOOGLE_API_KEY: API key de Google AI Studio (obligatoria para Gemini)
+    - GROQ_API_KEY: API key de Groq (opcional, para fallback)
+    """
+
     def __init__(self):
-        self.api_key = getattr(settings, 'GOOGLE_API_KEY', None) or config('GOOGLE_API_KEY', default=None)
-        if not self.api_key or self.api_key == 'your-api-key-here':
-            self.is_mock = True
-        else:
+        # Gemini (primario)
+        self.gemini_key = getattr(settings, 'GOOGLE_API_KEY', None) or config('GOOGLE_API_KEY', default=None)
+        self.gemini_client = None
+        self.gemini_model = 'gemini-flash-latest'
+
+        if self.gemini_key and self.gemini_key != 'your-api-key-here':
             try:
-                self.client = genai.Client(api_key=self.api_key)
-                self.model_name = 'gemini-2.5-flash'
-                self.is_mock = False
+                self.gemini_client = genai.Client(api_key=self.gemini_key)
             except Exception as e:
-                print(f"Error configurando Gemini v2: {e}")
-                self.is_mock = True
+                print(f"[NEXUS] Error configurando Gemini: {e}")
+
+        # Groq (fallback)
+        self.groq_key = getattr(settings, 'GROQ_API_KEY', None) or config('GROQ_API_KEY', default=None)
+        self.groq_client = None
+        self.groq_model = 'llama-3.3-70b-versatile'
+
+        if self.groq_key and groq_sdk:
+            try:
+                self.groq_client = groq_sdk.Groq(api_key=self.groq_key)
+            except Exception as e:
+                print(f"[NEXUS] Error configurando Groq: {e}")
+
+        # Mock si no hay ningún proveedor
+        self.is_mock = not self.gemini_client and not self.groq_client
+
+        provider = 'Gemini+Groq' if self.gemini_client and self.groq_client else (
+            'Gemini' if self.gemini_client else ('Groq' if self.groq_client else 'MOCK')
+        )
+        print(f"[NEXUS] AI Provider: {provider}")
+
+    # ── Generadores internos ──────────────────────────────────────────────
+
+    def _generate_gemini(self, prompt, json_mode=False):
+        """Genera contenido con Gemini."""
+        config_kwargs = {}
+        if json_mode:
+            config_kwargs['response_mime_type'] = 'application/json'
+
+        response = self.gemini_client.models.generate_content(
+            model=self.gemini_model,
+            contents=prompt,
+            config=types.GenerateContentConfig(**config_kwargs) if config_kwargs else None,
+        )
+        return response.text
+
+    def _generate_groq(self, prompt, json_mode=False):
+        """Genera contenido con Groq (OpenAI-compatible)."""
+        messages = [{'role': 'user', 'content': prompt}]
+
+        kwargs = {
+            'model': self.groq_model,
+            'messages': messages,
+            'temperature': 0.3,
+            'max_tokens': 4096,
+        }
+
+        if json_mode:
+            # Groq no tiene response_format nativo, pero respetamos instrucciones
+            pass
+
+        response = self.groq_client.chat.completions.create(**kwargs)
+        return response.choices[0].message.content
+
+    def _generate(self, prompt, json_mode=False):
+        """
+        Generador dual: intenta Gemini → fallback Groq → error.
+        Retorna (texto, proveedor_usado).
+        """
+        # 1. Intentar Gemini
+        if self.gemini_client:
+            try:
+                text = self._generate_gemini(prompt, json_mode=json_mode)
+                return text, 'gemini'
+            except Exception as e:
+                print(f"[NEXUS] Gemini falló: {e}. Intentando Groq...")
+
+        # 2. Fallback a Groq
+        if self.groq_client:
+            try:
+                text = self._generate_groq(prompt, json_mode=json_mode)
+                return text, 'groq'
+            except Exception as e:
+                print(f"[NEXUS] Groq también falló: {e}")
+
+        # 3. Sin proveedores disponibles
+        return None, None
+
+    def _generate_json(self, prompt):
+        """
+        Genera y parsea JSON. Intenta Gemini (con json_mode) → Groq (con parsing).
+        Retorna (data, proveedor).
+        """
+        # Gemini con json_mode nativo
+        if self.gemini_client:
+            try:
+                text = self._generate_gemini(prompt, json_mode=True)
+                return json.loads(text), 'gemini'
+            except Exception as e:
+                print(f"[NEXUS] Gemini JSON falló: {e}. Intentando Groq...")
+
+        # Groq con parsing manual
+        if self.groq_client:
+            try:
+                text = self._generate_groq(prompt, json_mode=False)
+                data = _extract_json(text)
+                if data is not None:
+                    return data, 'groq'
+                print(f"[NEXUS] Groq no retornó JSON válido, usando mock")
+            except Exception as e:
+                print(f"[NEXUS] Groq JSON falló: {e}")
+
+        return None, None
+
+    # ── API pública ───────────────────────────────────────────────────────
 
     def generate_backlog_from_description(self, description):
         """Genera una lista de épicas y tareas basadas en una descripción del proyecto."""
@@ -57,16 +204,10 @@ class BacklogAIClient:
         Formato: [{{"epic": "nombre", "items": [{{"title": "t", "description": "d", "type": "feature", "priority": "high"}}]}}]
         Responde SOLO el JSON.
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Error en backlog generación: {e}")
-            return self._get_mock_backlog(description)
+        data, provider = self._generate_json(prompt)
+        if data is not None:
+            return data
+        return self._get_mock_backlog(description)
 
     def generate_user_stories(self, requirement):
         """Genera historias de usuario detalladas a partir de un requerimiento."""
@@ -78,16 +219,10 @@ class BacklogAIClient:
         Formato: [{{"title": "t", "role": "r", "action": "a", "benefit": "b", "acceptance_criteria": ["c1"], "type": "story", "priority": "high"}}]
         Responde SOLO el JSON.
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Error en user stories: {e}")
-            return self._get_mock_stories(requirement)
+        data, provider = self._generate_json(prompt)
+        if data is not None:
+            return data
+        return self._get_mock_stories(requirement)
 
     def chat_with_project(self, history, message, context):
         """Mantiene una conversación con contexto del proyecto."""
@@ -114,15 +249,10 @@ class BacklogAIClient:
 
         Mensaje del usuario: {message}
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            return response.text
-        except Exception as e:
-            print(f"Error en chat AI v2: {e}")
-            return "Lo siento, tuve un problema procesando tu solicitud táctica."
+        text, provider = self._generate(prompt)
+        if text:
+            return text
+        return "Lo siento, tuve un problema procesando tu solicitud táctica."
 
     def prioritize_backlog(self, tasks_data):
         """Analiza una lista de tareas y sugiere un orden de prioridad."""
@@ -139,16 +269,10 @@ class BacklogAIClient:
         Retorna SOLO un JSON con este formato exacto:
         {{"reasoning": "Tu explicación...", "ordered_ids": ["uuid-1", "uuid-2"]}}
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Error en priorización: {e}")
-            return None
+        data, provider = self._generate_json(prompt)
+        if data is not None:
+            return data
+        return None
 
     def generate_sprint_summary(self, sprint_data, tasks_data):
         """Genera un resumen ejecutivo del sprint en formato Markdown."""
@@ -184,15 +308,10 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
 
         Responde directamente en formato Markdown profesional.
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            return response.text
-        except Exception as e:
-            print(f"Error en resumen sprint: {e}")
-            return "Error al generar el resumen ejecutivo con IA. Por favor, intenta de nuevo."
+        text, provider = self._generate(prompt)
+        if text:
+            return text
+        return "Error al generar el resumen ejecutivo con IA. Por favor, intenta de nuevo."
 
     def get_foresight_recommendation(self, foresight_data):
         """Genera una recomendación táctica basada en datos de riesgo del sprint."""
@@ -209,15 +328,10 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
 
         Genera una recomendación de 1 o 2 frases máximo. Directo. Táctico.
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            return response.text.strip()
-        except Exception as e:
-            print(f"Error en foresight recommendation AI: {e}")
-            return "Analiza manualmente la carga."
+        text, provider = self._generate(prompt)
+        if text:
+            return text.strip()
+        return "Analiza manualmente la carga."
 
     def get_simulation_analysis(self, simulation_data):
         """Genera un análisis narrativo de un escenario de simulación."""
@@ -236,15 +350,10 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
 
         Actúa como el Oráculo de Nexus. Describe brevemente (max 3 frases) el impacto de este escenario. Sé directo y brutalmente honesto.
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt
-            )
-            return response.text.strip()
-        except Exception as e:
-            print(f"Error en simulation analysis AI: {e}")
-            return "No se pudo realizar el análisis táctico de simulación."
+        text, provider = self._generate(prompt)
+        if text:
+            return text.strip()
+        return "No se pudo realizar el análisis táctico de simulación."
 
     def generate_recommendations(self, context):
         """Analiza el contexto del proyecto y sugiere mejoras, riesgos y consejos técnicos."""
@@ -264,16 +373,12 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
         
         Retorna SOLO un JSON con el formato: [{{"title": "...", "description": "...", "type": "..."}}]
         """
-        try:
-            response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Error en AI recommendations: {e}")
-            return []
+        data, provider = self._generate_json(prompt)
+        if data is not None:
+            return data
+        return []
+
+    # ── Mock data ─────────────────────────────────────────────────────────
 
     def _get_mock_stories(self, requirement):
         return [{"role": "Usuario", "action": "X", "benefit": "Y", "title": "Mock Story", "acceptance_criteria": ["C1"], "priority": "high", "type": "story"}]

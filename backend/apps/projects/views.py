@@ -135,7 +135,13 @@ class ProjectViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             role = serializer.validated_data['role']
-            user_to_invite = User.objects.get(email=email)
+            try:
+                user_to_invite = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response(
+                    {"error": f"No existe usuario registrado con el email '{email}'. Solo se pueden invitar usuarios que ya tengan cuenta."},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
             if Member.objects.filter(project=project, user=user_to_invite).exists():
                 return Response(
