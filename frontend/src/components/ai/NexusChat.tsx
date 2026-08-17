@@ -22,7 +22,7 @@ export default function NexusChat() {
   const { setTaskModalTitle, setAiSuggestionPrompt } = useProjectStore()
 
   const loadHistory = async () => {
-    if (!projectId) return
+    if (!projectId || projectId === 'global') return
     setIsLoading(true)
     try {
       const history = await getChatHistoryApi(projectId)

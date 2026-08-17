@@ -57,7 +57,10 @@ export interface ChatMessage {
 }
 
 export const sendMessageApi = async (projectId: string, content: string) => {
-    const response = await apiClient.post<AIMessage>(`/v1/projects/${projectId}/ai/chat/`, { content })
+    const url = (!projectId || projectId === 'global')
+        ? '/global/ai/chat/'
+        : `/v1/projects/${projectId}/ai/chat/`
+    const response = await apiClient.post<AIMessage>(url, { content })
     return response.data
 }
 
@@ -69,6 +72,7 @@ export const projectChatApi = async (projectId: string, content: string, _histor
 }
 
 export const getChatHistoryApi = async (projectId: string) => {
+    if (!projectId || projectId === 'global') return []
     const response = await apiClient.get<AIMessage[]>(`/v1/projects/${projectId}/ai/chat/history/`)
     return response.data
 }
