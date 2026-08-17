@@ -42,29 +42,60 @@ def _extract_json(text: str):
     """Extrae JSON de un texto que puede contener markdown o texto adicional."""
     if not text:
         return None
-    # Buscar bloque ```json ... ```
+
+    # 1. Buscar bloque ```json ... ```
     match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
     if match:
         try:
             return json.loads(match.group(1))
         except json.JSONDecodeError:
             pass
-    # Buscar primer [ o {
+
+    # 2. Buscar bloque ``` ... ``` (sin language tag)
+    match = re.search(r'```\s*\n?(.*?)\n?\s*```', text, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+
+    # 3. Buscar primer [ o { con balanceo de brackets
     for start_char, end_char in [('[', ']'), ('{', '}')]:
         start = text.find(start_char)
         if start == -1:
             continue
         depth = 0
+        in_string = False
+        escape = False
         for i in range(start, len(text)):
-            if text[i] == start_char:
+            c = text[i]
+            if escape:
+                escape = False
+                continue
+            if c == '\\' and in_string:
+                escape = True
+                continue
+            if c == '"' and not escape:
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c == start_char:
                 depth += 1
-            elif text[i] == end_char:
+            elif c == end_char:
                 depth -= 1
             if depth == 0:
                 try:
                     return json.loads(text[start:i + 1])
                 except json.JSONDecodeError:
                     break
+
+    # 4. Try the whole text as JSON
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
     return None
 
 
@@ -91,7 +122,7 @@ class BacklogAIClient:
             try:
                 self.gemini_client = genai.Client(api_key=self.gemini_key)
             except Exception as e:
-                print(f"[NEXUS] Error configurando Gemini: {e}")
+                logger.warning("[NEXUS] Error configurando Gemini: %s", e)
 
         # Groq (fallback)
         self.groq_key = getattr(settings, 'GROQ_API_KEY', None) or config('GROQ_API_KEY', default=None)
@@ -102,7 +133,7 @@ class BacklogAIClient:
             try:
                 self.groq_client = groq_sdk.Groq(api_key=self.groq_key)
             except Exception as e:
-                print(f"[NEXUS] Error configurando Groq: {e}")
+                logger.warning("[NEXUS] Error configurando Groq: %s", e)
 
         # Mock si no hay ningún proveedor
         self.is_mock = not self.gemini_client and not self.groq_client
@@ -174,25 +205,44 @@ class BacklogAIClient:
         Genera y parsea JSON. Intenta Gemini (con json_mode) → Groq (con parsing).
         Retorna (data, proveedor).
         """
+        MAX_RETRIES = 2
+
         # Gemini con json_mode nativo
         if self.gemini_client:
-            try:
-                text = self._generate_gemini(prompt, json_mode=True)
-                return json.loads(text), 'gemini'
-            except Exception as e:
-                logger.warning("Gemini JSON falló: %s. Intentando Groq...", e)
+            for attempt in range(MAX_RETRIES):
+                try:
+                    text = self._generate_gemini(prompt, json_mode=True)
+                    data = json.loads(text)
+                    logger.info("Gemini JSON OK (attempt %d), type=%s", attempt + 1, type(data).__name__)
+                    return data, 'gemini'
+                except json.JSONDecodeError as e:
+                    logger.warning("Gemini JSON parse error (attempt %d): %s", attempt + 1, e)
+                    # Try without json_mode on last attempt
+                    if attempt == MAX_RETRIES - 1:
+                        try:
+                            text = self._generate_gemini(prompt, json_mode=False)
+                            data = _extract_json(text)
+                            if data is not None:
+                                logger.info("Gemini fallback (sin json_mode) OK")
+                                return data, 'gemini'
+                        except Exception as e2:
+                            logger.warning("Gemini fallback also failed: %s", e2)
+                except Exception as e:
+                    logger.warning("Gemini error (attempt %d): %s", attempt + 1, e)
+                    break  # Don't retry on non-parse errors
 
         # Groq con parsing manual
         if self.groq_client:
-            try:
-                text = self._generate_groq(prompt, json_mode=False)
-                logger.info("Groq response length: %d", len(text) if text else 0)
-                data = _extract_json(text)
-                if data is not None:
-                    return data, 'groq'
-                logger.warning("Groq no retornó JSON válido. Response snippet: %s", text[:200] if text else 'None')
-            except Exception as e:
-                logger.warning("Groq JSON falló: %s", e)
+            for attempt in range(MAX_RETRIES):
+                try:
+                    text = self._generate_groq(prompt, json_mode=False)
+                    logger.info("Groq response length: %d (attempt %d)", len(text) if text else 0, attempt + 1)
+                    data = _extract_json(text)
+                    if data is not None:
+                        return data, 'groq'
+                    logger.warning("Groq no retornó JSON válido. Snippet: %s", text[:200] if text else 'None')
+                except Exception as e:
+                    logger.warning("Groq error (attempt %d): %s", attempt + 1, e)
 
         return None, None
 
@@ -203,30 +253,60 @@ class BacklogAIClient:
         if self.is_mock:
             return self._get_mock_backlog(description)
 
-        prompt = f"""
-        Genera un backlog JSON para el proyecto: "{description}"
-        Formato: [{{"epic": "nombre", "items": [{{"title": "t", "description": "d", "type": "feature", "priority": "high"}}]}}]
-        Responde SOLO el JSON.
-        """
+        prompt = f"""Eres un Product Owner experto. Genera un backlog JSON para un proyecto Agile.
+
+DESCRIPCIÓN DEL PROYECTO: "{description}"
+
+REGLAS ESTRICTAS:
+1. Genera entre 2 y 4 épicas.
+2. Cada épica tiene entre 2 y 4 items (historias de usuario o tareas).
+3. Cada item tiene: title, description, type (feature/bug/task/story), priority (high/medium/low).
+4. NUNCA incluyas texto antes o después del JSON.
+5. El JSON debe ser un array válido.
+
+Formato exacto (responde SOLO el JSON, nada más):
+[{{"epic": "Nombre de la Épica", "items": [{{"title": "Título de la tarea", "description": "Descripción detallada", "type": "feature", "priority": "high"}}]}}]
+
+JSON:"""
         data, provider = self._generate_json(prompt)
         if data is not None:
-            return data
-        return self._get_mock_backlog(description)
+            # Validate structure
+            if isinstance(data, list) and len(data) > 0:
+                return data
+            # If AI returned a dict with 'epic' key, wrap it
+            if isinstance(data, dict) and 'epic' in data:
+                return [data]
+        logger.warning("AI no generó backlog válido, usando fallback descriptivo")
+        return self._get_descriptive_backlog(description)
 
     def generate_user_stories(self, requirement):
         """Genera historias de usuario detalladas a partir de un requerimiento."""
         if self.is_mock:
             return self._get_mock_stories(requirement)
 
-        prompt = f"""
-        Genera Historias de Usuario JSON para: "{requirement}"
-        Formato: [{{"title": "t", "role": "r", "action": "a", "benefit": "b", "acceptance_criteria": ["c1"], "type": "story", "priority": "high"}}]
-        Responde SOLO el JSON.
-        """
+        prompt = f"""Eres un Product Owner experto. Genera historias de usuario en formato JSON.
+
+REQUERIMIENTO: "{requirement}"
+
+REGLAS ESTRICTAS:
+1. Genera entre 3 y 6 historias de usuario.
+2. Cada historia tiene: title, role, action, benefit, acceptance_criteria (array de strings), type (story/feature/task), priority (high/medium/low).
+3. El role debe ser un rol real (ej: "Desarrollador", "Product Owner", "Usuario final").
+4. NUNCA incluyas texto antes o después del JSON.
+5. El JSON debe ser un array válido.
+
+Formato exacto (responde SOLO el JSON, nada más):
+[{{"title": "Título de la historia", "role": "Rol del usuario", "action": "Qué quiere hacer", "benefit": "Para qué le sirve", "acceptance_criteria": ["Criterio 1", "Criterio 2"], "type": "story", "priority": "high"}}]
+
+JSON:"""
         data, provider = self._generate_json(prompt)
         if data is not None:
-            return data
-        return self._get_mock_stories(requirement)
+            if isinstance(data, list) and len(data) > 0:
+                return data
+            if isinstance(data, dict) and 'title' in data:
+                return [data]
+        logger.warning("AI no generó stories válidas, usando fallback descriptivo")
+        return self._get_descriptive_stories(requirement)
 
     def chat_with_project(self, history, message, context):
         """Mantiene una conversación con contexto del proyecto."""
@@ -235,7 +315,7 @@ class BacklogAIClient:
     def chat(self, message, context="", history=None):
         """Chat agéntico con contexto del proyecto."""
         if self.is_mock:
-            return f"Nexus AI: Hola. Recibí tu mensaje: '{message}'. (Modo Mock)"
+            return f"Nexus AI: Hola. Recibí tu mensaje: '{message}'. No hay proveedores de IA configurados."
 
         if history is None:
             history = []
@@ -261,58 +341,54 @@ class BacklogAIClient:
     def prioritize_backlog(self, tasks_data):
         """Analiza una lista de tareas y sugiere un orden de prioridad."""
         default = {
-            "reasoning": "Orden basado en prioridad predefinida.",
+            "reasoning": "No se pudo generar priorización con IA. Orden basado en la secuencia actual.",
             "ordered_ids": [t['id'] for t in tasks_data]
         }
         if self.is_mock:
             return default
 
-        prompt = f"""
-        Actúa como un Agile Coach experto. Prioriza las siguientes tareas del backlog:
-        {json.dumps(tasks_data)}
+        prompt = f"""Eres un Agile Coach experto. Prioriza las siguientes tareas del backlog por importancia y dependencias.
 
-        Retorna SOLO un JSON con este formato exacto:
-        {{"reasoning": "Tu explicación...", "ordered_ids": ["uuid-1", "uuid-2"]}}
-        """
+TAREAS:
+{json.dumps(tasks_data, indent=2)}
+
+REGLAS ESTRICTAS:
+1. Analiza las tareas y ordénalas por prioridad real (no solo por el campo priority).
+2. Considera dependencias lógicas: lo fundamental va primero.
+3. Incluye TODOS los IDs en ordered_ids.
+4. Explica tu razonamiento en reasoning.
+5. NUNCA incluyas texto antes o después del JSON.
+
+Formato exacto (responde SOLO el JSON, nada más):
+{{"reasoning": "Tu explicación del ordenamiento...", "ordered_ids": ["id-1", "id-2"]}}
+
+JSON:"""
         data, provider = self._generate_json(prompt)
         if data is not None:
-            return data
+            if isinstance(data, dict) and 'ordered_ids' in data:
+                return data
+        logger.warning("AI no generó priorización válida")
         return default
 
     def generate_sprint_summary(self, sprint_data, tasks_data):
         """Genera un resumen ejecutivo del sprint en formato Markdown."""
         if self.is_mock:
-            return """# Resumen Ejecutivo del Sprint (MOCK)
-## Estado General
-El sprint ha progresado de manera estable, alcanzando un **80%** de los puntos planificados.
+            return "No hay proveedores de IA configurados para generar el resumen del sprint."
+        prompt = f"""Eres un Delivery Manager senior. Genera un resumen ejecutivo profesional y conciso para el siguiente Sprint en español.
 
-## Tareas Completadas
-- Implementación de Autenticación (NEX-10)
-- Diseño de Base de Datos (NEX-11)
+DATOS DEL SPRINT:
+{sprint_data}
 
-## Tareas Pendientes
-- Integración de API externa (NEX-12)
+TAREAS (Título, Puntos, Estado):
+{tasks_data}
 
-## Observaciones
-El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos en NEX-12 para el próximo sprint.
-"""
-        prompt = f"""
-        Actúa como un Delivery Manager senior. Genera un resumen ejecutivo profesional y conciso para el siguiente Sprint en español:
+REGLAS ESTRICTAS:
+1. El resumen debe incluir: Estado General (% cumplimiento), Tareas completadas, Tareas pendientes, Observaciones estratégicas.
+2. Usa formato Markdown profesional.
+3. Sé conciso pero informativo.
+4. NUNCA incluyas texto antes o después del Markdown.
 
-        DATOS DEL SPRINT:
-        {sprint_data}
-
-        TAREAS (Título, Puntos, Estado):
-        {tasks_data}
-
-        EL RESUMEN DEBE INCLUIR (usando Markdown):
-        1. Estado General y % de cumplimiento (Story Points completados vs totales).
-        2. Tareas destacadas completadas.
-        3. Tareas que quedaron pendientes y por qué (basado en el estado).
-        4. Observaciones estratégicas sobre el ritmo de trabajo, posibles riesgos o sugerencias para la retrospectiva.
-
-        Responde directamente en formato Markdown profesional.
-        """
+Responde directamente en formato Markdown:"""
         text, provider = self._generate(prompt)
         if text:
             return text
@@ -321,18 +397,14 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
     def get_foresight_recommendation(self, foresight_data):
         """Genera una recomendación táctica basada en datos de riesgo del sprint."""
         if self.is_mock:
-            risk = foresight_data.get('risk_level', 'low')
-            if risk in ['high', 'critical']:
-                return "Recomendación: Peligro de incumplimiento. Mover tareas a 'Planning'."
-            return "Recomendación: Equipo con buen ritmo."
+            return "No hay proveedores de IA configurados para generar recomendaciones de foresight."
 
-        prompt = f"""
-        {SYSTEM_PROMPT}
-        Analiza los siguientes datos de riesgo de un Sprint:
-        {json.dumps(foresight_data)}
+        prompt = f"""{SYSTEM_PROMPT}
+Analiza los siguientes datos de riesgo de un Sprint:
+{json.dumps(foresight_data)}
 
-        Genera una recomendación de 1 o 2 frases máximo. Directo. Táctico.
-        """
+Genera una recomendación de 1 o 2 frases máximo. Directo. Táctico.
+NUNCA incluyas texto antes o después de tu respuesta."""
         text, provider = self._generate(prompt)
         if text:
             return text.strip()
@@ -341,20 +413,19 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
     def get_simulation_analysis(self, simulation_data):
         """Genera un análisis narrativo de un escenario de simulación."""
         if self.is_mock:
-            return f"SIM_REPORT: Riesgo proyectado {simulation_data['risk_level'].upper()}. Desviación: {simulation_data['risk_index']}%."
+            return "No hay proveedores de IA configurados para generar análisis de simulación."
 
-        prompt = f"""
-        {SYSTEM_PROMPT}
-        ESCENARIO SIMULADO:
-        {json.dumps(simulation_data.get('scenario', {}))}
+        prompt = f"""{SYSTEM_PROMPT}
+ESCENARIO SIMULADO:
+{json.dumps(simulation_data.get('scenario', {}))}
 
-        RESULTADOS DE SIMULACIÓN:
-        - Nivel de Riesgo: {simulation_data['risk_level']}
-        - Índice de Riesgo: {simulation_data['risk_index']}
-        - Progreso de Trabajo proyectado: {simulation_data['indicators']['work_completed_pct']}%
+RESULTADOS DE SIMULACIÓN:
+- Nivel de Riesgo: {simulation_data['risk_level']}
+- Índice de Riesgo: {simulation_data['risk_index']}
+- Progreso de Trabajo proyectado: {simulation_data['indicators']['work_completed_pct']}%
 
-        Actúa como el Oráculo de Nexus. Describe brevemente (max 3 frases) el impacto de este escenario. Sé directo y brutalmente honesto.
-        """
+Actúa como el Oráculo de Nexus. Describe brevemente (max 3 frases) el impacto de este escenario. Sé directo y brutalmente honesto.
+NUNCA incluyas texto antes o después de tu respuesta."""
         text, provider = self._generate(prompt)
         if text:
             return text.strip()
@@ -362,32 +433,60 @@ El equipo muestra un buen ritmo (velocity). Se recomienda revisar los bloqueos e
 
     def generate_recommendations(self, context):
         """Analiza el contexto del proyecto y sugiere mejoras, riesgos y consejos técnicos."""
-        mock_data = [
-            {"title": "Optimizar Backend", "description": "Se detectan cuellos de botella en la API.", "type": "technical"},
-            {"title": "Riesgo de Deadline", "description": "La velocidad actual pone en riesgo el cierre.", "type": "risk"}
-        ]
         if self.is_mock:
-            return mock_data
+            return []
 
-        prompt = f"""
-        {SYSTEM_PROMPT}
-        Analiza el siguiente contexto de proyecto y genera una lista de 3 a 5 recomendaciones.
-        Cada recomendación debe tener un 'title', 'description' y un 'type' (uno de: 'risk', 'improvement', 'technical').
-        
-        CONTEXTO:
-        {context}
-        
-        Retorna SOLO un JSON con el formato: [{{"title": "...", "description": "...", "type": "..."}}]
-        """
+        prompt = f"""Eres un consultor Agile senior. Analiza el contexto del proyecto y genera recomendaciones accionables.
+
+CONTEXTO DEL PROYECTO:
+{context}
+
+REGLAS ESTRICTAS:
+1. Genera entre 3 y 5 recomendaciones.
+2. Cada recomendación tiene: title (string), description (string con acción concreta), type (uno de: "risk", "improvement", "technical").
+3. Sé específico y accionable — nada genérico.
+4. NUNCA incluyas texto antes o después del JSON.
+5. El JSON debe ser un array válido.
+
+Formato exacto (responde SOLO el JSON, nada más):
+[{{"title": "Título de la recomendación", "description": "Descripción con acción concreta", "type": "improvement"}}]
+
+JSON:"""
         data, provider = self._generate_json(prompt)
         if data is not None:
-            return data
-        return mock_data
+            if isinstance(data, list) and len(data) > 0:
+                return data
+        logger.warning("AI no generó recomendaciones válidas")
+        return []
 
-    # ── Mock data ─────────────────────────────────────────────────────────
+    # ── Fallbacks descriptivos (cuando la IA falla) ────────────────────────
+
+    def _get_descriptive_stories(self, requirement):
+        """Fallback: genera historias de usuario básicas basadas en el requerimiento."""
+        return [{
+            "title": f"Historia para: {requirement}",
+            "role": "Usuario",
+            "action": "interactuar con el sistema",
+            "benefit": "lograr el objetivo del requerimiento",
+            "acceptance_criteria": ["El sistema procesa el requerimiento correctamente"],
+            "type": "story",
+            "priority": "medium"
+        }]
+
+    def _get_descriptive_backlog(self, description):
+        """Fallback: genera backlog básico basado en la descripción."""
+        return [{
+            "epic": f"Implementación: {description}",
+            "items": [
+                {"title": "Análisis de requerimientos", "description": f"Analizar los requerimientos para: {description}", "type": "task", "priority": "high"},
+                {"title": "Diseño de arquitectura", "description": "Definir la arquitectura técnica del sistema", "type": "task", "priority": "high"},
+                {"title": "Implementación core", "description": "Desarrollar la funcionalidad principal", "type": "feature", "priority": "high"},
+                {"title": "Testing y validación", "description": "Probar y validar la implementación", "type": "task", "priority": "medium"}
+            ]
+        }]
 
     def _get_mock_stories(self, requirement):
-        return [{"role": "Usuario", "action": "X", "benefit": "Y", "title": "Mock Story", "acceptance_criteria": ["C1"], "priority": "high", "type": "story"}]
+        return []
 
     def _get_mock_backlog(self, description):
-        return [{"epic": "Mock Epic", "items": [{"title": "Mock Task", "description": "d", "type": "feature", "priority": "high"}]}]
+        return []
