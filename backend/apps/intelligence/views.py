@@ -1,7 +1,10 @@
 from rest_framework import views, status, response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 import json
+import logging
+logger = logging.getLogger(__name__)
 from apps.projects.models import Project
 from apps.projects.permissions import IsProjectMember
 from django.db import models
@@ -24,6 +27,16 @@ class ChatView(views.APIView):
     permission_classes = [IsAuthenticated, IsProjectMember]
 
     def post(self, request, project_id=None):
+        try:
+            return self._handle_post(request, project_id)
+        except Exception as e:
+            logger.exception("ChatView error")
+            return response.Response(
+                {"detail": f"Error interno: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def _handle_post(self, request, project_id=None):
         # Support for global chat or specific project
         project = None
         if project_id and project_id != 'global':
