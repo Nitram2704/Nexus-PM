@@ -150,7 +150,7 @@ class ChatView(views.APIView):
         return context
 
     def _build_global_context(self, user):
-        projects = Project.objects.filter(members=user)
+        projects = Project.objects.filter(members__user=user)
         project_summaries = []
 
         for p in projects:
