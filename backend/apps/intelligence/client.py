@@ -113,19 +113,8 @@ class BacklogAIClient:
     """
 
     def __init__(self):
-        # Gemini (primario)
-        self.gemini_key = getattr(settings, 'GOOGLE_API_KEY', None) or config('GOOGLE_API_KEY', default=None)
-        self.gemini_client = None
-        self.gemini_model = 'gemini-flash-latest'
-
-        if self.gemini_key and self.gemini_key != 'your-api-key-here':
-            try:
-                self.gemini_client = genai.Client(api_key=self.gemini_key)
-            except Exception as e:
-                logger.warning("[NEXUS] Error configurando Gemini: %s", e)
-
-        # Groq (fallback)
-        self.groq_key = getattr(settings, 'GROQ_API_KEY', None) or config('GROQ_API_KEY', default=None)
+        # Groq (primario - más generoso en tier gratuito)
+        self.groq_key = getattr(settings, 'GROQ_API_KEY', None) or config('GROQ_API_KEY', default=None) or os.environ.get('GROQ_API_KEY')
         self.groq_client = None
         self.groq_model = 'llama-3.3-70b-versatile'
 
@@ -135,11 +124,22 @@ class BacklogAIClient:
             except Exception as e:
                 logger.warning("[NEXUS] Error configurando Groq: %s", e)
 
+        # Gemini (secundario - quota limitada en free tier)
+        self.gemini_key = getattr(settings, 'GOOGLE_API_KEY', None) or config('GOOGLE_API_KEY', default=None) or os.environ.get('GOOGLE_API_KEY')
+        self.gemini_client = None
+        self.gemini_model = 'gemini-flash-latest'
+
+        if self.gemini_key and self.gemini_key != 'your-api-key-here':
+            try:
+                self.gemini_client = genai.Client(api_key=self.gemini_key)
+            except Exception as e:
+                logger.warning("[NEXUS] Error configurando Gemini: %s", e)
+
         # Mock si no hay ningún proveedor
         self.is_mock = not self.gemini_client and not self.groq_client
 
-        provider = 'Gemini+Groq' if self.gemini_client and self.groq_client else (
-            'Gemini' if self.gemini_client else ('Groq' if self.groq_client else 'MOCK')
+        provider = 'Groq+Gemini' if self.groq_client and self.gemini_client else (
+            'Groq' if self.groq_client else ('Gemini' if self.gemini_client else 'MOCK')
         )
         logger.info("[NEXUS] AI Provider: %s", provider)
 
@@ -178,49 +178,36 @@ class BacklogAIClient:
 
     def _generate(self, prompt, json_mode=False):
         """
-        Generador dual: intenta Gemini → fallback Groq → error.
+        Generador dual: intenta Groq → fallback Gemini → error.
+        Groq primero: quota más generosa.
         Retorna (texto, proveedor_usado).
         """
-        # 1. Intentar Gemini
-        if self.gemini_client:
-            try:
-                text = self._generate_gemini(prompt, json_mode=json_mode)
-                return text, 'gemini'
-            except Exception as e:
-                logger.warning("Gemini falló: %s. Intentando Groq...", e)
-
-        # 2. Fallback a Groq
+        # 1. Intentar Groq (quota generosa)
         if self.groq_client:
             try:
                 text = self._generate_groq(prompt, json_mode=json_mode)
                 return text, 'groq'
             except Exception as e:
-                logger.warning("Groq también falló: %s", e)
+                logger.warning("Groq falló: %s. Intentando Gemini...", e)
+
+        # 2. Fallback a Gemini
+        if self.gemini_client:
+            try:
+                text = self._generate_gemini(prompt, json_mode=json_mode)
+                return text, 'gemini'
+            except Exception as e:
+                logger.warning("Gemini también falló: %s", e)
 
         # 3. Sin proveedores disponibles
         return None, None
 
     def _generate_json(self, prompt):
         """
-        Genera y parsea JSON. Intenta Gemini (sin json_mode) → Groq (sin json_mode).
+        Genera y parsea JSON. Intenta Groq (sin json_mode) → Gemini (sin json_mode).
         Usa _extract_json para parsear la respuesta del texto plano.
         Retorna (data, proveedor).
         """
-        # 1. Gemini (sin json_mode — el extract_json se encarga del parseo)
-        if self.gemini_client:
-            try:
-                text = self._generate_gemini(prompt, json_mode=False)
-                if text:
-                    logger.info("Gemini respondió (%d chars), extrayendo JSON...", len(text))
-                    data = _extract_json(text)
-                    if data is not None:
-                        logger.info("Gemini JSON OK, type=%s", type(data).__name__)
-                        return data, 'gemini'
-                    logger.warning("Gemini no retornó JSON válido. Snippet: %s", text[:300])
-            except Exception as e:
-                logger.warning("Gemini error: %s", e)
-
-        # 2. Groq (sin json_mode)
+        # 1. Groq (sin json_mode — más generoso en quota)
         if self.groq_client:
             try:
                 text = self._generate_groq(prompt, json_mode=False)
@@ -233,6 +220,20 @@ class BacklogAIClient:
                     logger.warning("Groq no retornó JSON válido. Snippet: %s", text[:300])
             except Exception as e:
                 logger.warning("Groq error: %s", e)
+
+        # 2. Gemini (sin json_mode)
+        if self.gemini_client:
+            try:
+                text = self._generate_gemini(prompt, json_mode=False)
+                if text:
+                    logger.info("Gemini respondió (%d chars), extrayendo JSON...", len(text))
+                    data = _extract_json(text)
+                    if data is not None:
+                        logger.info("Gemini JSON OK, type=%s", type(data).__name__)
+                        return data, 'gemini'
+                    logger.warning("Gemini no retornó JSON válido. Snippet: %s", text[:300])
+            except Exception as e:
+                logger.warning("Gemini error: %s", e)
 
         return None, None
 
