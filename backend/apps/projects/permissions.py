@@ -7,7 +7,7 @@ class IsProjectMember(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         project_id = view.kwargs.get('project_id')
-        if project_id:
+        if project_id and project_id != 'global':
             return Member.objects.filter(project_id=project_id, user=request.user).exists()
         return True
 
