@@ -20,7 +20,6 @@ from .agents.orchestrator import AgentOrchestrator
 from .foresight import ForesightEngine
 from apps.tasks.models import Task
 from apps.notifications.models import Notification
-from google.genai import types
 import threading
 
 
@@ -527,58 +526,43 @@ class AIDiagnosticView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        from .client import BacklogAIClient
-        client = BacklogAIClient()
-        
-        results = {}
-        
-        # Test Groq
-        groq_result = {"status": "not_configured", "error": None, "key_len": len(client.groq_key) if client.groq_key else 0}
-        if client.groq_client:
-            try:
-                response = client.groq_client.chat.completions.create(
-                    model=client.groq_model,
-                    messages=[{'role': 'user', 'content': 'Responde solo con la palabra ok'}],
-                    temperature=0.1,
-                    max_tokens=10,
-                )
-                raw_text = response.choices[0].message.content if response.choices else None
-                finish_reason = response.choices[0].finish_reason if response.choices else 'unknown'
-                groq_result["raw_text"] = repr(raw_text) if raw_text else None
-                groq_result["finish_reason"] = finish_reason
-                groq_result["model"] = client.groq_model
-                groq_result["usage"] = {"prompt": response.usage.prompt_tokens, "completion": response.usage.completion_tokens} if response.usage else None
-                if raw_text and raw_text.strip():
-                    groq_result["status"] = "working"
-                else:
-                    groq_result["status"] = "empty_response"
-            except Exception as e:
-                groq_result["status"] = "error"
-                groq_result["error"] = str(e)[:300]
-        results["groq"] = groq_result
-
-        # Test Gemini
-        gemini_result = {"status": "not_configured", "error": None, "key_len": len(client.gemini_key) if client.gemini_key else 0}
-        if client.gemini_client:
-            try:
-                response = client.gemini_client.models.generate_content(
-                    model=client.gemini_model,
-                    contents="Responde solo con la palabra ok",
-                    config=types.GenerateContentConfig(max_output_tokens=10, temperature=0.1),
-                )
-                raw_text = response.text if response.text else None
-                gemini_result["raw_text"] = repr(raw_text) if raw_text else None
-                gemini_result["model"] = client.gemini_model
-                if raw_text and raw_text.strip():
-                    gemini_result["status"] = "working"
-                else:
-                    gemini_result["status"] = "empty_response"
-            except Exception as e:
-                gemini_result["status"] = "error"
-                gemini_result["error"] = str(e)[:300]
-        results["gemini"] = gemini_result
-
-        results["is_mock"] = client.is_mock
-        results["provider"] = "Groq" if client.groq_client else ("Gemini" if client.gemini_client else "MOCK")
-
+        results = {"error": None}
+        try:
+            from .client import BacklogAIClient
+            client = BacklogAIClient()
+            
+            results["groq_key_len"] = len(client.groq_key) if client.groq_key else 0
+            results["gemini_key_len"] = len(client.gemini_key) if client.gemini_key else 0
+            results["is_mock"] = client.is_mock
+            results["groq_client"] = client.groq_client is not None
+            results["gemini_client"] = client.gemini_client is not None
+            results["provider"] = "Groq" if client.groq_client else ("Gemini" if client.gemini_client else "MOCK")
+            
+            # Test Groq directly
+            if client.groq_client:
+                try:
+                    groq_response = client.groq_client.chat.completions.create(
+                        model=client.groq_model,
+                        messages=[{'role': 'user', 'content': 'Responde solo con la palabra ok'}],
+                        temperature=0.1,
+                        max_tokens=10,
+                    )
+                    raw_text = groq_response.choices[0].message.content if groq_response.choices else None
+                    finish_reason = groq_response.choices[0].finish_reason if groq_response.choices else 'unknown'
+                    results["groq_raw"] = repr(raw_text) if raw_text else None
+                    results["groq_finish"] = finish_reason
+                    results["groq_model"] = client.groq_model
+                    if raw_text and raw_text.strip():
+                        results["groq_status"] = "WORKING"
+                    else:
+                        results["groq_status"] = "EMPTY"
+                except Exception as e:
+                    results["groq_status"] = "ERROR"
+                    results["groq_error"] = str(e)[:500]
+            else:
+                results["groq_status"] = "NOT_CONFIGURED"
+                
+        except Exception as e:
+            results["error"] = str(e)[:500]
+            
         return response.Response(results)
