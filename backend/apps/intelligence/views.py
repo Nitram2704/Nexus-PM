@@ -32,7 +32,7 @@ class ChatView(views.APIView):
         except Exception as e:
             logger.exception("ChatView error")
             return response.Response(
-                {"detail": f"Error interno: {str(e)}"},
+                {"detail": "Error procesando la solicitud."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
