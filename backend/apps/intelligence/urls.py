@@ -2,10 +2,11 @@ from django.urls import path
 from .views import (
     GenerateBacklogView, ImportProposalView, GenerateUserStoriesView,
     ChatView, ChatHistoryView, OrchestrateEpicView, ForesightView, SimulationView, ProposedActionView,
-    PrioritizeBacklogView, AIRecommendationView
+    PrioritizeBacklogView, AIRecommendationView, AIDiagnosticView
 )
 
 urlpatterns = [
+    path('ai/diagnostic/', AIDiagnosticView.as_view(), name='ai-diagnostic'),
     path('global/ai/chat/', ChatView.as_view(), name='ai-chat-global'),
     path('projects/<uuid:project_id>/ai/generate-backlog/', GenerateBacklogView.as_view(), name='ai-generate-backlog'),
     path('projects/<uuid:project_id>/ai/generate-user-stories/', GenerateUserStoriesView.as_view(), name='ai-generate-user-stories'),

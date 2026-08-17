@@ -2,6 +2,7 @@ import json
 import os
 import re
 import logging
+import time
 from decouple import config
 from google import genai
 from google.genai import types
@@ -173,30 +174,52 @@ class BacklogAIClient:
             # Groq no tiene response_format nativo, pero respetamos instrucciones
             pass
 
+        logger.info("Groq request: model=%s, prompt_len=%d", self.groq_model, len(prompt))
         response = self.groq_client.chat.completions.create(**kwargs)
-        return response.choices[0].message.content
+        text = response.choices[0].message.content
+        logger.info("Groq response: %d chars, finish_reason=%s", len(text) if text else 0, response.choices[0].finish_reason if response.choices else 'unknown')
+        return text
 
     def _generate(self, prompt, json_mode=False):
         """
         Generador dual: intenta Groq → fallback Gemini → error.
-        Groq primero: quota más generosa.
+        Incluye retry con backoff para rate limits.
         Retorna (texto, proveedor_usado).
         """
-        # 1. Intentar Groq (quota generosa)
-        if self.groq_client:
-            try:
-                text = self._generate_groq(prompt, json_mode=json_mode)
-                return text, 'groq'
-            except Exception as e:
-                logger.warning("Groq falló: %s. Intentando Gemini...", e)
+        MAX_RETRIES = 2
+        RETRY_DELAY = 2  # seconds
 
-        # 2. Fallback a Gemini
-        if self.gemini_client:
-            try:
-                text = self._generate_gemini(prompt, json_mode=json_mode)
-                return text, 'gemini'
-            except Exception as e:
-                logger.warning("Gemini también falló: %s", e)
+        for attempt in range(MAX_RETRIES):
+            # 1. Intentar Groq (quota generosa)
+            if self.groq_client:
+                try:
+                    text = self._generate_groq(prompt, json_mode=json_mode)
+                    return text, 'groq'
+                except Exception as e:
+                    logger.warning("Groq falló (attempt %d): %s", attempt + 1, e)
+                    if '429' in str(e) or 'rate' in str(e).lower():
+                        if attempt < MAX_RETRIES - 1:
+                            logger.info("Rate limit detectado, esperando %ds...", RETRY_DELAY * (attempt + 1))
+                            time.sleep(RETRY_DELAY * (attempt + 1))
+                            continue
+
+            # 2. Fallback a Gemini
+            if self.gemini_client:
+                try:
+                    text = self._generate_gemini(prompt, json_mode=json_mode)
+                    return text, 'gemini'
+                except Exception as e:
+                    logger.warning("Gemini falló (attempt %d): %s", attempt + 1, e)
+                    if '429' in str(e) or 'rate' in str(e).lower() or 'RESOURCE_EXHAUSTED' in str(e):
+                        if attempt < MAX_RETRIES - 1:
+                            logger.info("Rate limit Gemini, esperando %ds...", RETRY_DELAY * (attempt + 1))
+                            time.sleep(RETRY_DELAY * (attempt + 1))
+                            continue
+
+            # Only retry if we got a rate limit error
+            if attempt < MAX_RETRIES - 1:
+                # Check if last error was a rate limit
+                time.sleep(1)
 
         # 3. Sin proveedores disponibles
         return None, None

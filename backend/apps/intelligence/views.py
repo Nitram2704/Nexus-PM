@@ -519,3 +519,47 @@ class AIRecommendationView(views.APIView):
             created_recs.append(new_rec)
             
         return response.Response(AIRecommendationSerializer(created_recs, many=True).data, status=status.HTTP_201_CREATED)
+
+
+class AIDiagnosticView(views.APIView):
+    """Diagnostic endpoint to check AI provider status."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .client import BacklogAIClient
+        client = BacklogAIClient()
+        
+        # Quick test: try Groq
+        groq_status = "not_configured"
+        groq_error = None
+        if client.groq_client:
+            try:
+                text, _ = client._generate("Say 'ok' in one word")
+                if text:
+                    groq_status = "working"
+                else:
+                    groq_status = "no_response"
+            except Exception as e:
+                groq_status = "error"
+                groq_error = str(e)[:200]
+
+        # Quick test: try Gemini
+        gemini_status = "not_configured"
+        gemini_error = None
+        if client.gemini_client:
+            try:
+                text, _ = client._generate("Say 'ok' in one word")
+                if text:
+                    gemini_status = "working"
+                else:
+                    gemini_status = "no_response"
+            except Exception as e:
+                gemini_status = "error"
+                gemini_error = str(e)[:200]
+
+        return response.Response({
+            "groq": {"status": groq_status, "error": groq_error, "key_len": len(client.groq_key) if client.groq_key else 0},
+            "gemini": {"status": gemini_status, "error": gemini_error, "key_len": len(client.gemini_key) if client.gemini_key else 0},
+            "is_mock": client.is_mock,
+            "provider": "Groq" if client.groq_client else ("Gemini" if client.gemini_client else "MOCK"),
+        })
